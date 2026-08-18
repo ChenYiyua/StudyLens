@@ -1,0 +1,32 @@
+@host = http://127.0.0.1:5080
+@participantId = demo-student
+
+GET {{host}}/health
+
+###
+
+POST {{host}}/api/events
+Content-Type: application/json
+
+{
+  "participantId": "{{participantId}}",
+  "provider": "ChatGpt",
+  "activity": "Coding",
+  "startedAtUtc": "2026-08-18T18:00:00Z",
+  "durationMinutes": 25,
+  "interactionCount": 4,
+  "promptWordCount": 80,
+  "helpfulnessRating": 5
+}
+
+###
+
+GET {{host}}/api/events?participantId={{participantId}}
+
+###
+
+GET {{host}}/api/insights?participantId={{participantId}}
+
+###
+
+POST {{host}}/api/demo/seed?participantId={{participantId}}

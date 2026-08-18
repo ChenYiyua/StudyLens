@@ -1,0 +1,22 @@
+# Build output
+**/bin/
+**/obj/
+**/dist/
+**/node_modules/
+
+# Local tooling and editor state
+.tools/
+.vs/
+.vscode/
+.idea/
+*.user
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+
+# Operating system files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "StudyLens",
+  "version": "0.1.0",
+  "description": "Record privacy-aware metadata about AI-assisted learning sessions.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["http://127.0.0.1:5080/*"],
+  "action": {
+    "default_title": "Record a StudyLens reflection",
+    "default_popup": "index.html"
+  }
+}
