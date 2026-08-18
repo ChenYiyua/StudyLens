@@ -20,6 +20,7 @@ English version:
 6. Data Annotations 检查范围；JSON 配置拒绝未声明字段。
 7. Controller 创建 `LearningEvent`，通过 `ILearningEventRepository` 保存。
 8. Dashboard 请求 `/api/insights`，Service 按 provider、activity 和日期聚合。
+9. 用户可以导出自己的 JSON 数据，或删除该 participant 下的全部记录。
 
 ## 为什么这样选技术
 
@@ -70,6 +71,12 @@ Controller 不应该知道数据存在内存还是 MongoDB。`ILearningEventRepo
 - 合法 metadata 返回 201；
 - helpfulness 超出 1-5 返回 400；
 - 请求包含 `rawPrompt` 返回 400。
+- export 只返回指定 participant 的数据；
+- delete 不会误删其他 participant 的记录。
+
+后来又加入真实 MongoDB integration test：用随机 test database 写入记录，新建第二个 repository instance 再读取，检查 compound index，最后删除并清理测试数据库。这样验证的不只是“MongoDB adapter 能编译”，而是跨 repository instance 的真实持久化行为。
+
+本地手工验证还做了更强的一步：写入数据后完全停止 API 进程，再启动新进程读取同一条记录。记录仍然存在，证明数据不在 ASP.NET 进程内存里。
 
 ## CORS 和开发代理
 
@@ -82,8 +89,7 @@ Dashboard 最初直接从 5173 端口请求 5080 端口，会形成 cross-origin
 如果被问到 production readiness，要主动说明：
 
 - 目前没有登录和授权，participant ID 不是安全凭证；
-- 默认演示存储是内存，重启会丢失；
-- MongoDB adapter 已实现并编译，但还没有连接真实测试数据库做 integration test；
+- 默认零配置演示仍使用内存；MongoDB 模式已经在本地和自动化测试中验证，但还不是受保护的云部署；
 - 扩展现在是用户主动填写 metadata，还没有自动计算会话数据；
 - 没有用户研究结果，不能声称提升了学习效果。
 
@@ -113,7 +119,7 @@ FastAPI 也能完成任务，但这个岗位的现有后端是 ASP.NET Core。�
 
 ### 下一步最重要的是什么？
 
-不是继续堆图表，而是补真实 MongoDB integration test、身份与数据删除能力，然后找 3-5 个学生做 usability test，验证收集字段是否容易理解、Dashboard 是否真的帮助 reflection。
+不是继续堆图表。MongoDB integration test 和数据导出/删除已经补上，下一步应先加 authentication/ownership check，再找 3-5 个学生做 usability test，验证收集字段是否容易理解、Dashboard 是否真的帮助 reflection。
 
 ## 90 秒演示顺序
 
@@ -121,5 +127,6 @@ FastAPI 也能完成任务，但这个岗位的现有后端是 ASP.NET Core。�
 2. 打开扩展，指出它不读取或显示 prompt 内容。
 3. 选择 provider、activity 和 rating，保存一条记录。
 4. 打开 Dashboard，展示 sessions、minutes、helpfulness 和分布变化。
-5. 快速展示 API request model、repository interface 和一条 integration test。
-6. 最后主动说一个 limitation 和 next step。
+5. 展示 export/delete，解释 data portability 和 user control。
+6. 快速展示 API request model、repository interface 和 MongoDB integration test。
+7. 最后主动说 authentication limitation 和 usability study next step。

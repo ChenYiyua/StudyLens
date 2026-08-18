@@ -9,4 +9,7 @@ public interface ILearningEventRepository
     Task<IReadOnlyList<LearningEvent>> GetForParticipantAsync(
         string participantId,
         CancellationToken cancellationToken = default);
+    Task<long> DeleteForParticipantAsync(
+        string participantId,
+        CancellationToken cancellationToken = default);
 }

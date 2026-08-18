@@ -30,12 +30,20 @@ h3 { font-size: 21px; }
 .privacy-card p { margin: 7px 0 0; color: #4f635c; font-size: 14px; line-height: 1.45; }
 .shield { display: grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: white; background: #1b6a55; font-weight: 700; }
 
-.error-banner { margin-bottom: 24px; padding: 14px 16px; border: 1px solid #e6a9a1; border-radius: 12px; color: #7f2920; background: #fff0ed; }
+.error-banner, .notice-banner { margin-bottom: 24px; padding: 14px 16px; border-radius: 12px; }
+.error-banner { border: 1px solid #e6a9a1; color: #7f2920; background: #fff0ed; }
+.notice-banner { border: 1px solid #abd0bf; color: #185743; background: #edf8f2; }
 .section-heading, .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .section-heading { margin: 8px 0 20px; }
-.secondary-button { cursor: pointer; border: 1px solid #b9c8bf; border-radius: 10px; color: #1a4439; background: #fff; padding: 10px 15px; font-weight: 700; }
+.data-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.secondary-button, .primary-button, .danger-button { cursor: pointer; border-radius: 10px; padding: 10px 15px; font-weight: 700; }
+.secondary-button { border: 1px solid #b9c8bf; color: #1a4439; background: #fff; }
 .secondary-button:hover { border-color: #1a4439; }
-.secondary-button:disabled { cursor: wait; opacity: .6; }
+.primary-button { border: 1px solid #163b31; color: #fff; background: #163b31; }
+.primary-button:hover { background: #245a4b; }
+.danger-button { border: 1px solid #e2b5aa; color: #8c3425; background: #fff7f4; }
+.danger-button:hover { border-color: #b95c49; }
+.secondary-button:disabled, .primary-button:disabled, .danger-button:disabled { cursor: wait; opacity: .55; }
 
 .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
 .kpi-card, .panel { border: 1px solid #d8dfd5; border-radius: 18px; background: rgba(255,255,255,.86); box-shadow: 0 8px 30px rgba(27,57,47,.04); }
@@ -80,5 +88,7 @@ footer { display: flex; justify-content: space-between; margin-top: 28px; paddin
   .hero { gap: 30px; padding: 42px 0; }
   .kpi-grid { grid-template-columns: 1fr; }
   .participant-pill { display: none; }
+  .section-heading { align-items: flex-start; flex-direction: column; }
+  .data-actions { justify-content: flex-start; }
   footer { flex-direction: column; gap: 8px; }
 }

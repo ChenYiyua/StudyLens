@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using StudyLens.Api.Contracts;
 using StudyLens.Api.Data;
@@ -47,16 +48,43 @@ public sealed class LearningEventsController(ILearningEventRepository repository
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<LearningEventResponse>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<LearningEventResponse>>> GetForParticipant(
-        [FromQuery] string participantId,
+        [FromQuery, Required, StringLength(64, MinimumLength = 8)] string participantId,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(participantId))
-        {
-            return BadRequest(new { error = "participantId is required" });
-        }
-
         var events = await repository.GetForParticipantAsync(participantId.Trim(), cancellationToken);
         return Ok(events.Select(ToResponse).ToArray());
+    }
+
+    [HttpGet("export")]
+    [ProducesResponseType<LearningDataExport>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<LearningDataExport>> Export(
+        [FromQuery, Required, StringLength(64, MinimumLength = 8)] string participantId,
+        CancellationToken cancellationToken)
+    {
+        var normalizedParticipantId = participantId.Trim();
+        var events = await repository.GetForParticipantAsync(normalizedParticipantId, cancellationToken);
+        var export = new LearningDataExport(
+            SchemaVersion: 1,
+            ExportedAtUtc: DateTime.UtcNow,
+            ParticipantId: normalizedParticipantId,
+            Events: events.Select(ToResponse).ToArray());
+
+        return Ok(export);
+    }
+
+    [HttpDelete]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> DeleteForParticipant(
+        [FromQuery, Required, StringLength(64, MinimumLength = 8)] string participantId,
+        CancellationToken cancellationToken)
+    {
+        var deleted = await repository.DeleteForParticipantAsync(
+            participantId.Trim(),
+            cancellationToken);
+
+        return Ok(new { deleted });
     }
 
     private static LearningEventResponse ToResponse(LearningEvent item) =>

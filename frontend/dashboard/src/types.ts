@@ -29,3 +29,10 @@ export interface LearningEvent {
   promptWordCount: number
   helpfulnessRating: number
 }
+
+export interface LearningDataExport {
+  schemaVersion: number
+  exportedAtUtc: string
+  participantId: string
+  events: LearningEvent[]
+}

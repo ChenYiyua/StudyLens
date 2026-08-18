@@ -1,4 +1,4 @@
-import type { Insights, LearningEvent } from './types'
+import type { Insights, LearningDataExport, LearningEvent } from './types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
@@ -22,5 +22,18 @@ export function seedDemoData(participantId: string) {
   return getJson<{ inserted: number }>(
     `/api/demo/seed?participantId=${encodeURIComponent(participantId)}`,
     { method: 'POST' },
+  )
+}
+
+export function exportLearningData(participantId: string) {
+  return getJson<LearningDataExport>(
+    `/api/events/export?participantId=${encodeURIComponent(participantId)}`,
+  )
+}
+
+export function deleteLearningData(participantId: string) {
+  return getJson<{ deleted: number }>(
+    `/api/events?participantId=${encodeURIComponent(participantId)}`,
+    { method: 'DELETE' },
   )
 }

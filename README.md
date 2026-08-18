@@ -48,6 +48,7 @@ The API rejects unknown JSON fields. A request containing `rawPrompt`, for examp
 - ASP.NET Core 10 and C# 14 for the REST API;
 - MongoDB .NET Driver with a replaceable repository abstraction;
 - xUnit and `WebApplicationFactory` for unit and HTTP integration tests;
+- GitHub Actions with a real MongoDB service for continuous integration;
 - Chrome Extension Manifest V3.
 
 ## Repository layout
@@ -87,6 +88,8 @@ npm run dev
 
 Open `http://127.0.0.1:5173` and select **Add demo data**.
 
+The dashboard also lets the participant export all stored metadata as JSON or delete it. These controls demonstrate data portability and the right to erase prototype data.
+
 Build the extension:
 
 ```powershell
@@ -99,16 +102,17 @@ Then open `chrome://extensions`, enable **Developer mode**, choose **Load unpack
 
 ## Use MongoDB
 
-The verified local demo uses the in-memory repository so it runs without an account or local database. The MongoDB adapter is included and selected through configuration:
+The zero-setup demo uses the in-memory repository. To verify real persistence, start MongoDB and select the MongoDB adapter through configuration:
 
 ```powershell
 $env:Storage__Provider = "MongoDb"
-$env:MongoDb__ConnectionString = "<your MongoDB connection string>"
+$env:MongoDb__ConnectionString = "mongodb://127.0.0.1:27017"
 $env:MongoDb__DatabaseName = "studylens"
 dotnet run --project backend/StudyLens.Api
 ```
 
 Connection strings must stay in environment variables or local secret storage and must never be committed.
+The repository creates a compound `participant_started_desc` index for participant-scoped, newest-first reads.
 
 ## API
 
@@ -117,6 +121,8 @@ Connection strings must stay in environment variables or local secret storage an
 | `GET` | `/health` | Health and active storage provider |
 | `POST` | `/api/events` | Validate and create a learning event |
 | `GET` | `/api/events?participantId=...` | List one participant's events |
+| `GET` | `/api/events/export?participantId=...` | Export one participant's metadata |
+| `DELETE` | `/api/events?participantId=...` | Delete one participant's metadata |
 | `GET` | `/api/insights?participantId=...` | Return aggregated dashboard metrics |
 | `POST` | `/api/demo/seed?participantId=...` | Add synthetic local demo data |
 
@@ -125,25 +131,24 @@ Example requests are available in `backend/StudyLens.Api/StudyLens.Api.http`.
 ## Verification
 
 ```powershell
-dotnet test
-cd frontend/dashboard; npm run lint; npm run build
-cd ../extension; npm run lint; npm run build
+powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 ```
 
-The current test suite covers insight aggregation, participant isolation, valid HTTP event creation, range validation and rejection of undeclared content fields.
+Set `$env:RUN_MONGODB_INTEGRATION_TESTS = "true"` before running the script to include the local MongoDB persistence/index/deletion test. CI always runs this test against a MongoDB 8.0 service.
+
+The current suite covers insight aggregation, participant isolation, valid HTTP event creation, export, deletion, range validation, rejection of undeclared content fields and real MongoDB persistence.
 
 ## Current limitations
 
 - This MVP uses a pseudonymous ID but has no authentication or authorization. It must not be exposed publicly in its current form.
 - Session metadata is entered manually; automatic page instrumentation is deliberately out of scope for the first version.
-- The MongoDB adapter compiles but still needs an integration test against a real test database.
 - The demo endpoint and permissive local CORS policy should be disabled or restricted before deployment.
 - There is no longitudinal research validation yet; the dashboard currently supports reflection rather than making claims about learning outcomes.
 
 ## Next steps
 
 1. Add authenticated participants and ownership checks.
-2. Add a MongoDB integration test and an index on participant plus timestamp.
-3. Conduct short usability sessions and refine the reflection questions.
-4. Add data export and deletion controls.
+2. Conduct short usability sessions and refine the reflection questions.
+3. Replace manual duration/count entry with transparent, opt-in local session instrumentation.
+4. Deploy a protected research preview with the demo endpoint disabled.
 5. Measure whether the dashboard changes students' reflection behavior without increasing privacy risk.

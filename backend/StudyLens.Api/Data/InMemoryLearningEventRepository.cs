@@ -34,4 +34,27 @@ public sealed class InMemoryLearningEventRepository : ILearningEventRepository
 
         return Task.FromResult(result);
     }
+
+    public Task<long> DeleteForParticipantAsync(
+        string participantId,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var matchingIds = _events
+            .Where(pair => pair.Value.ParticipantId == participantId)
+            .Select(pair => pair.Key)
+            .ToArray();
+
+        long deleted = 0;
+        foreach (var id in matchingIds)
+        {
+            if (_events.TryRemove(id, out _))
+            {
+                deleted++;
+            }
+        }
+
+        return Task.FromResult(deleted);
+    }
 }

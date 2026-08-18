@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { fetchEvents, fetchInsights, seedDemoData } from './api'
+import {
+  deleteLearningData,
+  exportLearningData,
+  fetchEvents,
+  fetchInsights,
+  seedDemoData,
+} from './api'
 import type { DimensionCount, Insights, LearningEvent } from './types'
 
 const requestedParticipantId = new URLSearchParams(window.location.search).get('participantId')
@@ -37,7 +43,9 @@ function App() {
   const [events, setEvents] = useState<LearningEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -79,6 +87,44 @@ function App() {
     }
   }
 
+  async function downloadExport() {
+    setError('')
+    setNotice('')
+    try {
+      const exportData = await exportLearningData(participantId)
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `studylens-${participantId}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+      setNotice(`Exported ${exportData.events.length} reflection${exportData.events.length === 1 ? '' : 's'}.`)
+    } catch {
+      setError('Your data could not be exported. Check that the API is running.')
+    }
+  }
+
+  async function deleteAllData() {
+    const confirmed = window.confirm(
+      'Delete every StudyLens reflection for this participant? This cannot be undone.',
+    )
+    if (!confirmed) return
+
+    setDeleting(true)
+    setError('')
+    setNotice('')
+    try {
+      const result = await deleteLearningData(participantId)
+      await load()
+      setNotice(`Deleted ${result.deleted} reflection${result.deleted === 1 ? '' : 's'}.`)
+    } catch {
+      setError('Your data could not be deleted. Check that the API is running.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -109,15 +155,28 @@ function App() {
       </section>
 
       {error && <div className="error-banner" role="alert">{error}</div>}
+      {notice && <div className="notice-banner" role="status">{notice}</div>}
 
       <section className="section-heading">
         <div>
           <p className="eyebrow">This week</p>
           <h2>Your learning snapshot</h2>
         </div>
-        <button className="secondary-button" onClick={seed} disabled={seeding}>
-          {seeding ? 'Creating…' : 'Add demo data'}
-        </button>
+        <div className="data-actions">
+          <button className="secondary-button" onClick={() => void downloadExport()}>
+            Export my data
+          </button>
+          <button
+            className="danger-button"
+            onClick={() => void deleteAllData()}
+            disabled={deleting || events.length === 0}
+          >
+            {deleting ? 'Deleting…' : 'Delete my data'}
+          </button>
+          <button className="primary-button" onClick={seed} disabled={seeding}>
+            {seeding ? 'Creating…' : 'Add demo data'}
+          </button>
+        </div>
       </section>
 
       <section className="kpi-grid" aria-busy={loading}>
