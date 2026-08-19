@@ -3,6 +3,9 @@
 **/obj/
 **/dist/
 **/node_modules/
+backend/StudyLens.Api/wwwroot/
+**/__pycache__/
+*.py[cod]
 
 # Local tooling and editor state
 .tools/
@@ -18,6 +21,16 @@
 appsettings.Local.json
 studylens-*.json
 
+# Locally generated course corpus (may contain copyrighted teaching material)
+backend/StudyLens.Api/App_Data/*.json
+backend/StudyLens.Api/App_Data/imported-courses/
+backend/StudyLens.Api/App_Data/page-previews/
+!backend/StudyLens.Api/App_Data/.gitkeep
+
 # Operating system files
 .DS_Store
 Thumbs.db
+
+# Local application materials and generated personal documents
+tmp/
+output/

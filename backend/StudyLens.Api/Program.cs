@@ -1,8 +1,16 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.Features;
 using StudyLens.Api.Data;
 using StudyLens.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration
+    .AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false)
+    .AddEnvironmentVariables();
+if (args.Length > 0)
+{
+    builder.Configuration.AddCommandLine(args);
+}
 
 builder.Services
     .AddControllers()
@@ -12,19 +20,44 @@ builder.Services
         options.JsonSerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
     });
 
-builder.Services.Configure<MongoDbOptions>(builder.Configuration.GetSection(MongoDbOptions.SectionName));
+builder.Services.Configure<CourseCatalogOptions>(
+    builder.Configuration.GetSection(CourseCatalogOptions.SectionName));
+builder.Services.Configure<TutorAiOptions>(
+    builder.Configuration.GetSection(TutorAiOptions.SectionName));
+builder.Services.Configure<CourseImportOptions>(
+    builder.Configuration.GetSection(CourseImportOptions.SectionName));
+builder.Services.Configure<StudyDataOptions>(
+    builder.Configuration.GetSection(StudyDataOptions.SectionName));
+builder.Services.Configure<MongoDbOptions>(
+    builder.Configuration.GetSection(MongoDbOptions.SectionName));
 
-var storageProvider = builder.Configuration["Storage:Provider"] ?? "InMemory";
-if (storageProvider.Equals("MongoDb", StringComparison.OrdinalIgnoreCase))
+builder.Services.AddSingleton<CourseCatalog>();
+builder.Services.AddSingleton<CourseSearchService>();
+builder.Services.AddSingleton<CoursePagePreviewService>();
+builder.Services.AddSingleton<ICourseIndexBuilder, PythonCourseIndexBuilder>();
+builder.Services.AddSingleton<CourseImportService>();
+builder.Services.AddSingleton<ITutorAiProviderRegistry, TutorAiProviderRegistry>();
+builder.Services.AddScoped<TutorService>();
+builder.Services.AddHttpClient();
+builder.Services.Configure<FormOptions>(options =>
 {
-    builder.Services.AddSingleton<ILearningEventRepository, MongoLearningEventRepository>();
+    options.MultipartBodyLengthLimit = 300L * 1024 * 1024;
+});
+
+var studyDataProvider = builder.Configuration[$"{StudyDataOptions.SectionName}:Provider"] ?? "MongoDb";
+if (studyDataProvider.Equals("MongoDb", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddSingleton<IStudyAttemptRepository, MongoStudyAttemptRepository>();
+}
+else if (studyDataProvider.Equals("LocalJson", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddSingleton<IStudyAttemptRepository, LocalJsonStudyAttemptRepository>();
 }
 else
 {
-    builder.Services.AddSingleton<ILearningEventRepository, InMemoryLearningEventRepository>();
+    throw new InvalidOperationException(
+        $"Unsupported StudyData:Provider '{studyDataProvider}'. Use 'MongoDb' or 'LocalJson'.");
 }
-
-builder.Services.AddSingleton<LearningInsightsService>();
 
 builder.Services.AddCors(options =>
 {
@@ -42,8 +75,26 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseCors("LocalClients");
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.MapControllers();
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", storage = storageProvider }));
+app.MapGet("/health", async (
+    CourseSearchService courseSearch,
+    IStudyAttemptRepository studyAttempts,
+    CancellationToken cancellationToken) =>
+{
+    var storage = await studyAttempts.GetStatusAsync(cancellationToken);
+    var response = new
+    {
+        status = storage.Available ? "healthy" : "degraded",
+        readyCourses = courseSearch.GetStatuses().Count(course => course.Ready),
+        configuredCourses = courseSearch.GetStatuses().Count,
+        storage,
+    };
+
+    return Results.Json(response, statusCode: storage.Available ? StatusCodes.Status200OK : StatusCodes.Status503ServiceUnavailable);
+});
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

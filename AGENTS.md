@@ -2,24 +2,28 @@
 
 ## Purpose
 
-StudyLens is a privacy-aware AI-learning reflection prototype built for an AI-for-Education HiWi application. It records only user-approved metadata and must never collect raw prompts, model responses, page content, names, email addresses or university identifiers.
+StudyLens is a multi-course, source-grounded AI tutor. It retrieves evidence from local course material, preserves page-level citations, and uses a replaceable local model for teaching, practice generation, and formative feedback.
 
 ## Architecture
 
-- `backend/StudyLens.Api`: ASP.NET Core 10 API and MongoDB/in-memory repositories.
-- `backend/StudyLens.Api.Tests`: unit, HTTP integration and opt-in MongoDB integration tests.
-- `frontend/dashboard`: React/TypeScript reflection dashboard.
-- `frontend/extension`: Manifest V3 browser-extension popup.
+- `tools/build_course_index.py`: local PDF extraction and chunking pipeline.
+- `backend/StudyLens.Api`: ASP.NET Core 10 multi-course retrieval and tutor API.
+- `backend/StudyLens.Api.Tests`: unit and HTTP integration tests.
+- `frontend/dashboard`: React/TypeScript Explain, Practice, and Feedback workspace.
+- `frontend/extension`: explicit-selection Chrome/Edge extension; never collect passive browsing data.
+- MongoDB database `studylens`, collection `study_attempts`: course-scoped answer history.
+- `samples/demo-course`: public, reproducible materials used by a clean clone and retrieval evaluation.
 - `docs/interview-notes.zh-CN.md`: bilingual interview explanation.
 
 ## Verification
 
-Run `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1` from the repository root. MongoDB integration coverage runs when `RUN_MONGODB_INTEGRATION_TESTS=true` and a server is available at `127.0.0.1:27017`.
+Run `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1` from the repository root.
 
 ## Engineering boundaries
 
-- Keep JSON deserialization strict so undeclared content fields are rejected.
-- Preserve participant isolation in every read, export and delete path.
-- Never commit connection strings, participant data or generated exports.
-- Treat the participant ID as a prototype identifier, not authentication.
-- Add tests whenever the privacy boundary or repository behavior changes.
+- Never commit course PDFs, extracted course text, API keys, student answers, or generated feedback.
+- MongoDB is the production/default repository. `LocalJsonStudyAttemptRepository` exists only as an explicit fallback and deterministic test adapter.
+- Every course-grounded claim shown to a student must retain its source filename and page number.
+- Keep PDF extraction local. Any AI provider may receive only the retrieved excerpts needed for one request.
+- Treat generated teaching and grading as assistance, not an authoritative course solution.
+- Keep JSON deserialization strict and add tests whenever retrieval or privacy behavior changes.

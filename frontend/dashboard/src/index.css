@@ -1,3 +1,14 @@
-html {
-  background: #f3f6ef;
+:root {
+  color: #10234d;
+  background: #eef5ff;
+  font-family: Inter, "SF Pro Display", "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: #eef5ff; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }

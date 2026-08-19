@@ -10,13 +10,6 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    services:
-      mongodb:
-        image: mongo:8.0
-        ports:
-          - 27017:27017
-    env:
-      RUN_MONGODB_INTEGRATION_TESTS: 'true'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -29,9 +22,17 @@ jobs:
           cache-dependency-path: |
             frontend/dashboard/package-lock.json
             frontend/extension/package-lock.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Test course indexer
+        run: |
+          pip install -r tools/requirements.txt
+          python -m unittest tools.test_build_course_index
       - name: Restore backend
         run: dotnet restore StudyLens.sln
-      - name: Test backend and MongoDB adapter
+      - name: Test backend
         run: dotnet test StudyLens.sln --configuration Release --no-restore
       - name: Verify backend formatting
         run: dotnet format StudyLens.sln --verify-no-changes --no-restore
@@ -41,7 +42,7 @@ jobs:
           npm ci
           npm run lint
           npm run build
-      - name: Build extension
+      - name: Build browser extension
         working-directory: frontend/extension
         run: |
           npm ci
