@@ -161,6 +161,8 @@ Manual smoke-test checklist:
 4. Confirm that the dashboard shows the Browser Extension Handoff card and the address bar no longer contains a `#from=extension` fragment.
 5. Dismiss the card or request a course-grounded explanation and inspect its file/page citations.
 
+The unpacked v0.3.1 build has been manually smoke-tested in Microsoft Edge across the selection context menu, review popup, and local dashboard handoff.
+
 ## MongoDB data model
 
 The default repository is `MongoStudyAttemptRepository`; `LocalJsonStudyAttemptRepository` is an explicit fallback and test adapter, not the normal runtime path.

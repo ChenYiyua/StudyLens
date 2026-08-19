@@ -93,7 +93,7 @@ English:
 - Dashboard 和 extension 都做 lint、test 和 production build；
 - 真实本机 smoke test 已验证 MongoDB health、AI grade write、history read、handoff fragment 消费和浏览器显示。
 
-Chrome/Edge 的扩展管理安全页面不能由自动化工具代替用户操作，因此在亲自在 `chrome://extensions` 或 `edge://extensions` 完成 **Load unpacked** 并跑完 README 的五步 checklist 前，不说“已经完成真实扩展端到端验证”。目前可以准确说：扩展和 Dashboard 两端的 selection/handoff contract 有自动化测试，Dashboard 接收页有真实浏览器验证，最终安装检查需要一次人工操作。
+已在 Microsoft Edge 中手动加载 v0.3.1，并真实验证“网页选中文字 → 右键 Explain with StudyLens → review popup 保留选区 → local Dashboard handoff”。这条运行证据可以和 selection/handoff contract 自动化测试一起讲；仍然不要把 unpacked prototype 说成已经发布到扩展商店的产品。
 
 固定 benchmark 的价值是：以后换 embedding、hybrid retrieval 或模型时，能够比较结果，而不是凭感觉说“好像更聪明”。
 
