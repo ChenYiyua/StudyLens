@@ -8,7 +8,7 @@ public sealed class TutorAiOptions
 
     public string Endpoint { get; init; } = "http://127.0.0.1:11434";
 
-    public string Model { get; init; } = "qwen3.5:4b";
+    public string Model { get; init; } = "qwen3.5:9b";
 
     public int TimeoutSeconds { get; init; } = 300;
 
