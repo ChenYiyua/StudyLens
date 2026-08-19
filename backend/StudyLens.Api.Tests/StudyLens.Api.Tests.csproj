@@ -23,4 +23,9 @@
     <ProjectReference Include="..\StudyLens.Api\StudyLens.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\evals\demo-retrieval-cases.json" Link="evals\demo-retrieval-cases.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\demo-course-index.json" Link="samples\demo-course-index.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

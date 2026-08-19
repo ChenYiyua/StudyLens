@@ -1,154 +1,220 @@
 # StudyLens
 
-StudyLens is a privacy-aware prototype that helps students reflect on how they use generative AI for learning. A browser extension records only user-approved metadata, an ASP.NET Core API validates and stores events, and a React dashboard turns them into an understandable weekly summary.
+![React](https://img.shields.io/badge/React-TypeScript-2f75e8?logo=react&logoColor=white)
+![ASP.NET Core](https://img.shields.io/badge/ASP.NET_Core-C%23-5d65d8?logo=dotnet&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-NoSQL-19a974?logo=mongodb&logoColor=white)
+![Python](https://img.shields.io/badge/Python-Ingestion-2877c7?logo=python&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-38_passing-16885f)
 
-This repository is intentionally a focused MVP. The goal is to demonstrate a complete, testable data flow without collecting raw prompts or model responses.
+StudyLens is a multi-course, source-grounded AI learning companion for real study material. Its primary workflow teaches a selected lecture, explains the course's own exercise and solution, then generates a knowledge check and grades the student's answer against the same source.
 
-## Problem
+A clean clone includes a small original demo course and retrieval benchmark. The private reference deployment uses TUM's **Enterprise Architecture Management and Reference Models (INHN0017)** corpus: 52 PDFs, 926 pages, and 967 searchable chunks. Those copyrighted files and their extracted index remain local and are not committed.
 
-Students use tools such as ChatGPT, Claude and Gemini across many learning activities, but they have little visibility into their own patterns. Existing monitoring approaches can easily become invasive if they store conversation content.
+![StudyLens course-learning workspace](docs/images/studylens-overview.png)
 
-StudyLens asks a narrower question: can useful reflection be created from content-free metadata such as duration, interaction count, learning activity and a self-reported helpfulness rating?
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/studylens-course-import.png" alt="Import course files or an entire structured folder" /></td>
+    <td width="50%"><img src="docs/images/studylens-learning-workflow.png" alt="Exercise walkthrough and generated knowledge-check workflow" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Flexible course import</strong><br/>Preserves Lecture / Exercise / Solution folders and skips unsupported formats.</td>
+    <td align="center"><strong>Guided learning loop</strong><br/>Teach the lecture, explain the provided solution, then test understanding.</td>
+  </tr>
+</table>
 
-## Architecture
+The screenshots are from the running local EAM reference deployment. Private course files and extracted text are excluded from Git.
+
+## Product workflow
 
 ```mermaid
 flowchart LR
-    E[Manifest V3 browser extension] -->|POST metadata| A[ASP.NET Core API]
-    A -->|validate and store| R[Repository interface]
-    R --> M[(MongoDB)]
-    R --> I[(In-memory demo store)]
-    D[React dashboard] -->|GET insights and events| A
+    P[Course files or folder] --> X[Local extraction and classification]
+    X --> O[Lecture list and Exercise-Solution pairs]
+    O --> L[1. Lecture lesson]
+    L --> E[2. Exercise walkthrough]
+    E --> Q[3. Generated knowledge check]
+    Q --> F[Evidence-based feedback]
+    F --> M[(MongoDB attempt history)]
 ```
 
-The extension and dashboard are separate React clients with different responsibilities. The API is the privacy and validation boundary. Storage is hidden behind `ILearningEventRepository`, allowing the application to use an in-memory store for a zero-setup demo and MongoDB for persistence.
+This is more than a PDF chatbot:
 
-## Privacy boundary
+- retrieval is deterministic and evaluated separately from generation;
+- the model receives only selected passages from the chosen lecture or exercise set;
+- every generated workflow retains the original document and page;
+- practice and grading use structured JSON rather than parsing prose;
+- MongoDB stores the nested answer, feedback, model, and citation document as one attempt;
+- the browser extension reads only text the user explicitly selects;
+- model, AI provider, course catalog, and persistence adapter have separate boundaries.
 
-Collected:
+## Implemented features
 
-- pseudonymous participant ID;
-- AI provider and learning activity;
-- session duration and interaction count;
-- locally calculated prompt word count;
-- user-provided helpfulness rating.
+- file or whole-folder course import that preserves the Lecture/Exercise/Solution structure and skips unsupported files without rejecting the valid remainder;
+- PDF, Markdown, and text ingestion with deterministic overlapping chunks;
+- BM25-style lexical retrieval and lecture/exercise/solution/exam filters;
+- safe links back to the original local material page;
+- inline PNG previews of cited PDF pages, generated and cached locally;
+- document-scoped lecture teaching with page citations, examples, and exam-ready English wording;
+- automatic pairing and walkthrough of course-provided exercises and solutions;
+- course-grounded knowledge-check generation and formative grading;
+- MongoDB-backed attempt history, aggregate score, reload, and user-controlled deletion;
+- privacy-controlled Chrome/Edge extension handoff;
+- selectable local Qwen3.5, OpenAI GPT, and Google Gemini providers;
+- public demo corpus plus fixed retrieval evaluation cases;
+- Python, C#, API, formatting, dashboard, and extension checks in CI.
 
-Never collected:
+## Run a clean clone
 
-- raw prompts;
-- model responses;
-- page content;
-- student name, email or TUM identifier.
+Requirements: Windows, Node.js, .NET 10, Python 3.12 for indexing/tests/page previews, Ollama, and MongoDB Community Server. The startup script installs the small Python packages in `tools/requirements.txt` if they are missing.
 
-The API rejects unknown JSON fields. A request containing `rawPrompt`, for example, returns HTTP 400 instead of silently ignoring or storing it. The extension requests only `storage` and `activeTab`, following the principle of least privilege.
-
-## Technology
-
-- React 19, TypeScript and Vite for the dashboard and browser-extension popup;
-- ASP.NET Core 10 and C# 14 for the REST API;
-- MongoDB .NET Driver with a replaceable repository abstraction;
-- xUnit and `WebApplicationFactory` for unit and HTTP integration tests;
-- GitHub Actions with a real MongoDB service for continuous integration;
-- Chrome Extension Manifest V3.
-
-## Repository layout
-
-```text
-backend/
-  StudyLens.Api/          API, models, services and storage adapters
-  StudyLens.Api.Tests/    unit and HTTP integration tests
-frontend/
-  dashboard/              reflection dashboard
-  extension/              browser-extension popup and manifest
-docs/
-  interview-notes.zh-CN.md
-```
-
-## Run locally
-
-Requirements:
-
-- .NET 10 SDK;
-- Node.js 24 or a compatible current LTS release;
-- optional MongoDB instance or MongoDB Atlas connection.
-
-Start the API:
+Install or start MongoDB:
 
 ```powershell
-dotnet run --project backend/StudyLens.Api
+powershell -ExecutionPolicy Bypass -File scripts\setup-mongodb.ps1 -Install
 ```
 
-Start the dashboard in a second terminal:
+Install and test the default local model:
 
 ```powershell
-cd frontend/dashboard
-npm install
-npm run dev
+powershell -ExecutionPolicy Bypass -File scripts\setup-local-ai.ps1
 ```
 
-Open `http://127.0.0.1:5173` and select **Add demo data**.
-
-The dashboard also lets the participant export all stored metadata as JSON or delete it. These controls demonstrate data portability and the right to erase prototype data.
-
-Build the extension:
+Start the application:
 
 ```powershell
-cd frontend/extension
-npm install
+powershell -ExecutionPolicy Bypass -File scripts\run-local.ps1
+```
+
+Open `http://127.0.0.1:5080`. A clean clone starts with the committed **AI-Assisted Learning Demo** course. Keep the terminal open and press `Ctrl+C` to stop.
+
+Use **Add files or folder** in the sidebar to import individual PDF, Markdown, or text files, or select an entire course folder. The browser preserves its internal paths. Folders named `Lecture`, `Exercise`, and `Solution` let StudyLens build the learning sequence and pair sheets with their answers automatically. The copied files and index stay under the ignored local `App_Data/imported-courses` folder and are rediscovered after a restart.
+
+The default model is local Qwen through Ollama. Every local and cloud profile is selectable. An unconfigured profile opens provider-specific connection guidance; teaching actions remain unavailable until its runtime or API key is ready:
+
+```powershell
+# Gemini free tier
+powershell -ExecutionPolicy Bypass -File scripts\setup-cloud-ai.ps1 -Provider Gemini
+
+# OpenAI API (billed separately from a ChatGPT subscription)
+powershell -ExecutionPolicy Bypass -File scripts\setup-cloud-ai.ps1 -Provider OpenAI
+```
+
+The script hides keyboard input and stores the key in the Windows user environment, never in this repository. Restart StudyLens afterward. Cloud requests contain only the selected question, instructions, and retrieved course passages, not the original complete files. Check the provider's current billing, quota, and data-use terms before using private material; Gemini's free and paid tiers have different data handling.
+
+`GET /health` reports both course readiness and the live persistence provider. The expected storage result is `MongoDb`, connected to the local `studylens` database.
+
+## Prepare the private EAM reference course
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup-eam.ps1 `
+  -SourcePath "D:\Courses\Enterprise Architecture Management and Reference Models (INHN0017)"
+```
+
+The generated index and absolute source path go into ignored local files. They never enter Git.
+
+Add any other course in the same way:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup-course.ps1 `
+  -CourseId "linear-algebra" `
+  -CourseName "Linear Algebra" `
+  -SourcePath "D:\Courses\Linear Algebra"
+```
+
+No React or C# change is required to add a course.
+
+## Install the browser extension
+
+Build it once:
+
+```powershell
+cd frontend\extension
+npm ci
 npm run build
 ```
 
-Then open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `frontend/extension/dist`. Keep the API running while using the extension.
+Then open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `frontend\extension\dist`.
 
-## Use MongoDB
+On any ordinary page, select a concept, open StudyLens, review the selected text, choose a course, and click **Open in StudyLens**. The extension does not request cookies or browsing-history access. The selection is placed in a local URL fragment, consumed by the dashboard, and immediately removed from the address bar.
 
-The zero-setup demo uses the in-memory repository. To verify real persistence, start MongoDB and select the MongoDB adapter through configuration:
+## MongoDB data model
+
+The default repository is `MongoStudyAttemptRepository`; `LocalJsonStudyAttemptRepository` is an explicit fallback and test adapter, not the normal runtime path.
+
+Each document in `studylens.study_attempts` contains:
+
+- stable attempt ID and course ID;
+- question and student answer;
+- score, strengths, missing points, and improved answer;
+- model name and full page-citation metadata;
+- creation time.
+
+A compound index on `(courseId, createdAtUtc descending)` supports course history. History is not committed to Git, and the UI exposes course-scoped deletion.
+
+## Verification
 
 ```powershell
-$env:Storage__Provider = "MongoDb"
-$env:MongoDb__ConnectionString = "mongodb://127.0.0.1:27017"
-$env:MongoDb__DatabaseName = "studylens"
-dotnet run --project backend/StudyLens.Api
+powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
 ```
 
-Connection strings must stay in environment variables or local secret storage and must never be committed.
-The repository creates a compound `participant_started_desc` index for participant-scoped, newest-first reads.
+The current suite runs 5 Python indexing/rendering tests, 33 C# tests, .NET formatting verification, and lint/production builds for both React applications. CI deliberately uses fake AI providers and does not download multi-gigabyte model weights.
+
+## Move to another computer
+
+1. Push/clone this repository through GitHub.
+2. Install MongoDB and Ollama on the new computer.
+3. Copy private course files separately, then rerun `setup-course.ps1` for their new path.
+4. Run `setup-local-ai.ps1`, `verify.ps1`, and `run-local.ps1`.
+5. Expect a fresh local MongoDB history unless you separately export and import it.
+
+GitHub synchronizes source code, the public demo, tests, and documentation. It intentionally does not synchronize private PDFs, model weights, local configuration, MongoDB student data, or this Codex conversation.
+
+The portable default is `qwen3.5:4b` for the current 16 GB laptop. On the Ryzen/RTX 3060 laptop, evaluate the retained 9B profile:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup-local-ai.ps1 -Model "qwen3.5:9b"
+```
 
 ## API
 
 | Method | Route | Purpose |
 |---|---|---|
-| `GET` | `/health` | Health and active storage provider |
-| `POST` | `/api/events` | Validate and create a learning event |
-| `GET` | `/api/events?participantId=...` | List one participant's events |
-| `GET` | `/api/events/export?participantId=...` | Export one participant's metadata |
-| `DELETE` | `/api/events?participantId=...` | Delete one participant's metadata |
-| `GET` | `/api/insights?participantId=...` | Return aggregated dashboard metrics |
-| `POST` | `/api/demo/seed?participantId=...` | Add synthetic local demo data |
+| `GET` | `/health` | course and MongoDB readiness |
+| `GET` | `/api/courses` | configured courses and corpus status |
+| `POST` | `/api/courses/import` | upload and locally index a new course |
+| `GET` | `/api/courses/{courseId}/learning-path` | lectures and paired exercise/solution units |
+| `GET` | `/api/courses/{courseId}/search?query=...` | ranked page evidence |
+| `GET` | `/api/courses/{courseId}/chunks/{chunkId}` | complete retrieved passage for Dig in |
+| `GET` | `/api/courses/{courseId}/documents/{documentId}` | safe original-material access |
+| `GET` | `/api/courses/{courseId}/documents/{documentId}/pages/{page}/preview` | locally rendered cited-page image |
+| `GET` | `/api/ai/status` | provider and model readiness |
+| `POST` | `/api/courses/{courseId}/tutor/explain` | grounded bilingual teaching |
+| `POST` | `/api/courses/{courseId}/tutor/lecture` | teach one selected lecture in sequence |
+| `POST` | `/api/courses/{courseId}/tutor/exercise` | explain a course exercise with its solution |
+| `POST` | `/api/courses/{courseId}/tutor/practice` | structured practice generation |
+| `POST` | `/api/courses/{courseId}/tutor/grade` | formative feedback and persistence |
+| `GET` | `/api/courses/{courseId}/history` | attempt metrics and recent records |
+| `DELETE` | `/api/courses/{courseId}/history` | user-controlled course history deletion |
 
-Example requests are available in `backend/StudyLens.Api/StudyLens.Api.http`.
+## Repository layout
 
-## Verification
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
+```text
+samples/                       public demo course and committed index
+evals/                         fixed retrieval benchmark cases
+tools/                         extraction, indexing, and Python tests
+backend/StudyLens.Api/         ASP.NET Core API, retrieval, tutor, MongoDB
+backend/StudyLens.Api.Tests/   unit, API, repository, and benchmark tests
+frontend/dashboard/            React/TypeScript learning workspace
+frontend/extension/            explicit-selection browser extension
+scripts/                       setup, run, and verification automation
+docs/                          local guide, handoff, and interview notes
 ```
 
-Set `$env:RUN_MONGODB_INTEGRATION_TESTS = "true"` before running the script to include the local MongoDB persistence/index/deletion test. CI always runs this test against a MongoDB 8.0 service.
+## Safety and limitations
 
-The current suite covers insight aggregation, participant isolation, valid HTTP event creation, export, deletion, range validation, rejection of undeclared content fields and real MongoDB persistence.
-
-## Current limitations
-
-- This MVP uses a pseudonymous ID but has no authentication or authorization. It must not be exposed publicly in its current form.
-- Session metadata is entered manually; automatic page instrumentation is deliberately out of scope for the first version.
-- The demo endpoint and permissive local CORS policy should be disabled or restricted before deployment.
-- There is no longitudinal research validation yet; the dashboard currently supports reflection rather than making claims about learning outcomes.
-
-## Next steps
-
-1. Add authenticated participants and ownership checks.
-2. Conduct short usability sessions and refine the reflection questions.
-3. Replace manual duration/count entry with transparent, opt-in local session instrumentation.
-4. Deploy a protected research preview with the demo endpoint disabled.
-5. Measure whether the dashboard changes students' reflection behavior without increasing privacy risk.
+- Private material, local paths, model files, student work, and generated feedback are ignored by Git.
+- AI feedback is study assistance, not an official course grade.
+- Citations make output auditable; they do not guarantee the interpretation is correct.
+- The lexical retriever can miss synonyms; hybrid semantic retrieval and OCR remain evaluation candidates.
+- The project has engineering validation, but it does not yet claim measured learning-outcome improvement from a user study.

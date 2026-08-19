@@ -1,132 +1,116 @@
 # StudyLens 面试讲解笔记
 
-## 30 秒项目介绍
+## 30 秒介绍
 
-中文版本：
+中文：
 
-> StudyLens 是一个面向学生的隐私优先 AI 学习反思工具。浏览器扩展让用户主动记录一次 AI 学习会话，但只发送平台、学习目标、时长、交互次数、字数和帮助程度，不发送 prompt 或 response 正文。ASP.NET Core API 负责验证并通过 repository 保存数据，React Dashboard 再展示使用趋势。第一版重点不是复杂 AI 功能，而是打通一个可靠、可测试、隐私边界明确的产品流程。
+> StudyLens 是一个 multi-course, source-grounded AI tutor。它把课程材料变成带文件名和页码的检索索引，先找证据，再用本地 Qwen 做双语讲解、生成练习和形成性评分。评分记录连同引用证据保存在 MongoDB，学生可以刷新后继续查看。它还包含一个只读取用户明确选中文字的浏览器扩展。公开仓库有可复现实例和固定 retrieval benchmark；我的 EAM 本地部署包含 52 份 PDF、926 页资料。
 
-English version:
+English:
 
-> StudyLens is a privacy-first reflection tool for AI-assisted learning. A Manifest V3 browser extension collects only opt-in, content-free metadata. An ASP.NET Core API validates and stores the events through a repository abstraction, and a React dashboard visualizes usage patterns and self-reported helpfulness. The MVP focuses on a complete and testable product workflow rather than collecting sensitive conversation content.
+> StudyLens is a multi-course, source-grounded AI tutor. It retrieves page-level evidence before using a local Qwen model to explain concepts, generate practice, or provide formative feedback. MongoDB persists each attempt together with its nested citation evidence, and an explicit-selection browser extension connects web context to the course tutor without passive browsing-data collection. A public demo corpus and fixed retrieval benchmark make the repository reproducible.
 
-## 一次请求是怎么走的
+## 为什么这和岗位匹配
 
-1. 用户打开扩展 popup。
-2. 扩展从当前 tab 的 URL 判断 ChatGPT、Claude、Gemini 或 Copilot，但不读取网页内容。
-3. 用户选择 learning activity，填写时长、交互次数、字数和 helpfulness rating。
-4. 扩展向 `POST /api/events` 发送 JSON。
-5. ASP.NET Core model binding 把 JSON 转成 `CreateLearningEventRequest`。
-6. Data Annotations 检查范围；JSON 配置拒绝未声明字段。
-7. Controller 创建 `LearningEvent`，通过 `ILearningEventRepository` 保存。
-8. Dashboard 请求 `/api/insights`，Service 按 provider、activity 和日期聚合。
-9. 用户可以导出自己的 JSON 数据，或删除该 participant 下的全部记录。
+岗位要继续开发 AI learning browser extension 和 shared dashboard，并要求 JavaScript/React、ASP.NET Core/C#、MongoDB/NoSQL。StudyLens 对应的是同一条产品链：
 
-## 为什么这样选技术
+- React/TypeScript dashboard：课程检索、练习、反馈、历史；
+- ASP.NET Core/C#：API、输入校验、retrieval、AI orchestration、文件安全边界；
+- MongoDB：持久化 nested study-attempt documents；
+- browser extension：明确选中文本后交接到 dashboard；
+- Python：离线资料抽取、chunking 和 retrieval test fixtures；
+- AI tools research：可替换 provider，并记录模型、证据和延迟边界。
 
-### 为什么 React
+不要说“我已经做了和你们一模一样的系统”。更可信的表达是：
 
-- 岗位现有产品使用 React；
-- Dashboard 和 extension popup 都是状态驱动的小型交互界面；
-- TypeScript 可以在编译期检查 API 数据形状。
+> I built a small end-to-end prototype around the same technical boundaries so that I could contribute faster and discuss concrete trade-offs rather than only expressing interest.
 
-### 为什么 ASP.NET Core
+## 一次评分请求怎么走
 
-- 它提供依赖注入、model binding、validation 和清晰的 controller 结构；
-- 我有 Java/OOP 基础，C# 的类型系统和分层设计很容易迁移；
-- `WebApplicationFactory` 可以直接测试完整 HTTP pipeline。
+1. React 发送 `courseId`、题目和 student answer。
+2. Controller 校验课程状态、文本长度和请求结构。
+3. Search Service 只在该课程索引中做 BM25-style ranking。
+4. 系统选出六段证据并编号 `[1]`–`[6]`。
+5. Tutor Service 要求模型按 JSON Schema 返回分数、strengths、missing points 和 improved answer。
+6. API 自己附加稳定 attempt ID、model name 和 citation objects。
+7. `MongoStudyAttemptRepository` 把整次作答作为一个 document 保存。
+8. Feedback 页面重新读取该课程历史，计算 attempt count 和 average percentage。
 
-### 为什么 MongoDB
+## 为什么 MongoDB 合适
 
-- 学习事件天然接近 document/event 数据；
-- 未来增加非敏感字段时 schema 演进比较灵活；
-- 但当前查询模式固定，如果以后需要复杂关系、事务和研究数据联结，PostgreSQL 可能更合适。不要说 MongoDB 永远更好。
+一次作答不是简单的一行分数，而是一个天然的聚合对象：question、answer、多个 strengths、多个 missing points、improved answer、model 和多条 citation。MongoDB 可以把这组嵌套结构作为一个 document 原样保存，读取 Feedback 时不需要把很多表重新 join。
 
-### 为什么 Repository 接口
+这不代表 SQL 不行。选择 MongoDB 的原因是数据访问模式以“按课程读取完整 attempt”为主，而且目标岗位本身使用 MongoDB/NoSQL。为了不把业务逻辑绑死，Controller 只依赖 `IStudyAttemptRepository`；JSON adapter 只用于单元测试和明确 fallback。
 
-Controller 不应该知道数据存在内存还是 MongoDB。`ILearningEventRepository` 让测试使用快速、确定性的内存实现，真实环境再换成 MongoDB。代价是多一层抽象；对于只有一个简单 endpoint 的一次性脚本会过度设计，但这个项目需要测试和可替换存储，因此合理。
+实现细节：
 
-## 隐私设计怎么讲
+- 默认连接 `mongodb://127.0.0.1:27017`；
+- database `studylens`，collection `study_attempts`；
+- compound index：`courseId` ascending + `createdAtUtc` descending；
+- `/health` 会真实 ping MongoDB，断开时返回 degraded/503；
+- 删除按 course scoped 执行，并由用户在 UI 确认。
 
-核心不是“我们承诺不保存 prompt”，而是三层限制：
+## 为什么不把全部 PDF 发给模型
 
-1. 扩展表单没有 raw prompt 输入；
-2. API request model 没有 raw prompt 字段；
-3. JSON deserializer 配置为拒绝 unknown fields，所以带 `rawPrompt` 的请求返回 400。
+- 926 页会引入大量无关上下文，成本高且难核查；
+- retrieval 和 generation 分开后，可以分别测试“找得对不对”和“讲得对不对”；
+- 模型只收到当前问题需要的摘录，降低隐私和版权暴露面；
+- 文件名和页码来自程序索引，不让模型猜引用。
 
-扩展权限使用 `activeTab`，只在用户主动点击扩展时识别当前平台；没有申请读取全部历史记录的权限。字数应在客户端计算，只上传数字。
+## 为什么选 Qwen3.5
 
-## 测试与真实调试故事
+- 权重采用开放许可证，可在本机运行，不需要 API key 或 token 费用；
+- 4B 是当前 16 GB 电脑上可靠的默认档；
+- 9B 已保留给 RTX 3060 电脑做质量/延迟比较；
+- `ITutorAiProvider` 隔离模型调用，以后接云模型不用改 retrieval、MongoDB 或 React。
 
-最开始业务单元测试全部通过，但扩展真实 POST 时 API 返回 500。原因是 .NET 10 对 record primary constructor 的 validation metadata 有更严格的规则。修复方法是把 request DTO 改成普通 class，让 Data Annotations 明确放在属性上。
+不要说“Qwen 是世界上最好的模型”。应该说：
 
-这个问题说明：
+> It was the best practical quality-and-portability trade-off for the hardware available to the project. I kept the provider configurable so model quality can be evaluated rather than assumed.
 
-- compile success 不等于 HTTP pipeline 正常；
-- unit test 只能验证 aggregation logic；
-- integration test 才覆盖 JSON serialization、model binding、validation 和 controller routing。
+## 浏览器扩展的隐私设计
 
-修复后加入了 `WebApplicationFactory` 测试，覆盖：
+第一版就限制为 user-initiated explicit selection：
 
-- 合法 metadata 返回 201；
-- helpfulness 超出 1-5 返回 400；
-- 请求包含 `rawPrompt` 返回 400。
-- export 只返回指定 participant 的数据；
-- delete 不会误删其他 participant 的记录。
+- 只有用户点击扩展时才执行读取；
+- 只调用 `window.getSelection()`；
+- 不申请 cookies 或 history 权限；
+- 用户能在发送前编辑或取消；
+- 数据进入本机 URL fragment，不成为 HTTP request path；
+- Dashboard 消费后立刻清除 fragment。
 
-后来又加入真实 MongoDB integration test：用随机 test database 写入记录，新建第二个 repository instance 再读取，检查 compound index，最后删除并清理测试数据库。这样验证的不只是“MongoDB adapter 能编译”，而是跨 repository instance 的真实持久化行为。
+如果以后做真实用户研究，还需要 consent notice、retention policy、pseudonymous participant ID 和可撤回机制；当前原型不假装已经满足完整研究治理。
 
-本地手工验证还做了更强的一步：写入数据后完全停止 API 进程，再启动新进程读取同一条记录。记录仍然存在，证明数据不在 ASP.NET 进程内存里。
+## 测试和评估怎么讲
 
-## CORS 和开发代理
+- 4 个 Python 测试验证 PDF/Markdown/text indexing 和 stable metadata；
+- 20 个 C# 测试覆盖 retrieval、完整 evidence detail、course isolation、API validation、Tutor structured output、repository 和安全文件路径；
+- 4 个固定 retrieval cases 要求期望文档 rank first；
+- Dashboard 和 extension 都做 lint + production build；
+- 真实本机 smoke test 已验证 MongoDB health、AI grade write、history read 和浏览器显示。
 
-Dashboard 最初直接从 5173 端口请求 5080 端口，会形成 cross-origin request。开发环境后来改成请求相对路径 `/api`，由 Vite proxy 转发给 ASP.NET Core。生产环境也可以用 Nginx、Cloudflare 或平台反向代理提供统一 origin。
+固定 benchmark 的价值是：以后换 embedding、hybrid retrieval 或模型时，能够比较结果，而不是凭感觉说“好像更聪明”。
 
-扩展不经过 Dashboard 的代理，所以 Manifest 用 `host_permissions` 明确允许访问本地 API。
+## 真实调试故事
 
-## 现在不能夸大的地方
+1. Python dataclass 最初输出 `relative_path`，C# 期待 `relativePath`。文本仍能显示，但来源路径为空。修复为显式 JSON mapping，并加测试锁住 filename/page contract。
+2. 9B 模型下载成功，但在当前 16 GB 集显电脑 inference startup OOM。于是 4B 成为 portable default，9B 保留给 RTX 3060；这证明 provider/model configuration 不是过度设计。
+3. MongoDB Driver 代码编译通过并不等于数据库真的可用，所以给 `/health` 增加 live ping，并用真实 AI 评分完成 write → reload → UI display。面试时强调 **runtime evidence, not README claims**。
+4. 浏览器实测发现历史条目触发横向滚动，原因是 CSS Grid 子项默认 `min-width:auto`。给文本容器加 `min-width:0` 后重新 build 和视觉验证。
 
-如果被问到 production readiness，要主动说明：
+## 不能夸大的部分
 
-- 目前没有登录和授权，participant ID 不是安全凭证；
-- 默认零配置演示仍使用内存；MongoDB 模式已经在本地和自动化测试中验证，但还不是受保护的云部署；
-- 扩展现在是用户主动填写 metadata，还没有自动计算会话数据；
-- 没有用户研究结果，不能声称提升了学习效果。
+- 当前是 lexical retrieval，同义词覆盖有限；
+- 扫描图片型 PDF 仍需要 OCR；
+- 4B 本地模型质量不等于云端旗舰模型；
+- 引用证明来源，但生成解释仍需要学生核对；
+- 尚未完成真实用户学习效果研究；
+- 浏览器扩展是可加载 prototype，不是商店发布产品。
 
-这不会让项目显得差。能明确 boundary 和 next steps 通常比假装 production-ready 更专业。
+## 下一步按价值排序
 
-## 如果问“这个项目是不是 AI 帮你写的”
-
-可以诚实回答：
-
-> I used AI as a coding and research assistant to move quickly across an unfamiliar stack. I made the product-scope, data-model and privacy decisions, reviewed the generated code, ran the application end to end, and added tests after finding a real model-binding failure. I can explain each layer and its trade-offs, rather than treating the generated code as a black box.
-
-不要回答“全部都是我手写的”，也不要回答“AI 自动做完了”。重点是你使用 AI 提高速度，但你负责判断、验证和结果。
-
-## 常见追问
-
-### 为什么不直接保存聊天内容，再用 LLM 分析？
-
-原始聊天可能包含个人信息、课程答案和第三方内容。第一版先验证 content-free metadata 是否已经能提供有价值的反思，减少收集范围和合规风险。如果研究确实需要文本，应重新做 informed consent、retention policy、访问控制和 ethics review，而不是悄悄扩大采集。
-
-### 为什么 participant ID 不够安全？
-
-它只是假名化标识，不是 authentication token。知道 ID 的人理论上可以查询对应记录。正式版本必须有登录、ownership check 和授权。
-
-### 为什么不用 Python/FastAPI？
-
-FastAPI 也能完成任务，但这个岗位的现有后端是 ASP.NET Core。选择 C# 可以直接证明我能把 Java/OOP 基础迁移到他们的技术栈，同时学习强类型 DTO、依赖注入和 .NET testing。
-
-### 下一步最重要的是什么？
-
-不是继续堆图表。MongoDB integration test 和数据导出/删除已经补上，下一步应先加 authentication/ownership check，再找 3-5 个学生做 usability test，验证收集字段是否容易理解、Dashboard 是否真的帮助 reflection。
-
-## 90 秒演示顺序
-
-1. 用一句话说明问题和 privacy principle。
-2. 打开扩展，指出它不读取或显示 prompt 内容。
-3. 选择 provider、activity 和 rating，保存一条记录。
-4. 打开 Dashboard，展示 sessions、minutes、helpfulness 和分布变化。
-5. 展示 export/delete，解释 data portability 和 user control。
-6. 快速展示 API request model、repository interface 和 MongoDB integration test。
-7. 最后主动说 authentication limitation 和 usability study next step。
+1. 用真实用户任务定义 retrieval recall、citation correctness、grading consistency 和 task completion 指标。
+2. 对 lexical 与 hybrid semantic retrieval 做同一 benchmark 的比较。
+3. 加认证/participant pseudonymization，把个人本地历史升级为真正 shared dashboard。
+4. 对比 4B、9B 和云端模型的质量、延迟、成本与隐私。
+5. 为扫描资料添加选择性 OCR，而不是对所有 PDF 盲目 OCR。

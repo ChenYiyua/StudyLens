@@ -16,6 +16,11 @@ else {
 
 Push-Location $repositoryRoot
 try {
+    $pythonLauncher = Get-Command py -ErrorAction SilentlyContinue
+    if (-not $pythonLauncher) { throw 'Python Launcher was not found.' }
+    & $pythonLauncher.Source -3.12 -m unittest tools.test_build_course_index
+    if ($LASTEXITCODE -ne 0) { throw 'Course indexer tests failed.' }
+
     & $dotnet test StudyLens.sln --configuration Release
     if ($LASTEXITCODE -ne 0) { throw 'Backend tests failed.' }
 

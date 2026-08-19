@@ -1,225 +1,139 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
-type Provider = 'ChatGpt' | 'Claude' | 'Gemini' | 'Copilot' | 'Other'
-type Activity = 'UnderstandConcept' | 'Practice' | 'Research' | 'Writing' | 'Coding' | 'Other'
-
-interface SessionForm {
-  provider: Provider
-  activity: Activity
-  durationMinutes: number
-  interactionCount: number
-  promptWordCount: number
-  helpfulnessRating: number
+interface CourseStatus {
+  courseId: string
+  courseName: string | null
+  ready: boolean
 }
 
-const API_BASE_URL = import.meta.env.DEV ? '' : 'http://127.0.0.1:5080'
-
-const initialForm: SessionForm = {
-  provider: 'Other',
-  activity: 'UnderstandConcept',
-  durationMinutes: 20,
-  interactionCount: 3,
-  promptWordCount: 0,
-  helpfulnessRating: 4,
+interface CourseCatalog {
+  defaultCourseId: string
+  courses: CourseStatus[]
 }
+
+interface PageSelection {
+  text: string
+  title: string
+}
+
+const API_URL = 'http://127.0.0.1:5080'
+const maximumSelectionLength = 300
 
 function App() {
-  const [participantId, setParticipantId] = useState('')
-  const [form, setForm] = useState<SessionForm>(initialForm)
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [courses, setCourses] = useState<CourseStatus[]>([])
+  const [courseId, setCourseId] = useState('')
+  const [selection, setSelection] = useState('')
+  const [sourceTitle, setSourceTitle] = useState('Current page')
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [message, setMessage] = useState('Reading the text you selected…')
 
   useEffect(() => {
-    async function initializePopup() {
-      const id = await getOrCreateParticipantId()
-      setParticipantId(id)
-
-      const currentUrl = await getCurrentTabUrl()
-      const detectedProvider = detectProvider(currentUrl)
-      if (detectedProvider !== 'Other') {
-        setForm((current) => ({ ...current, provider: detectedProvider }))
+    async function initialise() {
+      try {
+        const [catalog, pageSelection] = await Promise.all([
+          fetch(`${API_URL}/api/courses`).then(async (response) => {
+            if (!response.ok) throw new Error('StudyLens API is unavailable.')
+            return response.json() as Promise<CourseCatalog>
+          }),
+          readPageSelection(),
+        ])
+        const readyCourses = catalog.courses.filter((course) => course.ready)
+        setCourses(readyCourses)
+        setCourseId(
+          readyCourses.some((course) => course.courseId === catalog.defaultCourseId)
+            ? catalog.defaultCourseId
+            : readyCourses[0]?.courseId ?? '',
+        )
+        setSelection(pageSelection.text.slice(0, maximumSelectionLength))
+        setSourceTitle(pageSelection.title || 'Current page')
+        setStatus('ready')
+        setMessage(pageSelection.text
+          ? 'Review or edit the selected text before opening StudyLens.'
+          : 'No text is selected. Select text on the page, then reopen this extension.')
+      } catch (error) {
+        setStatus('error')
+        setMessage(error instanceof Error ? error.message : 'StudyLens could not initialise.')
       }
     }
 
-    void initializePopup()
+    void initialise()
   }, [])
 
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    setStatus('saving')
+  const canOpen = useMemo(
+    () => status === 'ready' && courseId.length > 0 && selection.trim().length >= 2,
+    [courseId, selection, status],
+  )
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          participantId,
-          ...form,
-          startedAtUtc: new Date().toISOString(),
-        }),
-      })
-
-      if (!response.ok) throw new Error(`Request failed: ${response.status}`)
-      setStatus('saved')
-    } catch {
-      setStatus('error')
+  function openStudyLens() {
+    if (!canOpen) return
+    const fragment = new URLSearchParams({
+      course: courseId,
+      question: selection.trim(),
+      source: sourceTitle,
+      from: 'extension',
+    })
+    const url = `${API_URL}/#${fragment.toString()}`
+    if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
+      void chrome.tabs.create({ url })
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer')
     }
   }
 
-  return (
-    <main className="popup-shell">
-      <header>
-        <div className="brand-mark">SL</div>
-        <div>
-          <strong>StudyLens</strong>
-          <span>Private learning reflection</span>
-        </div>
-      </header>
+  return <main className="popup-shell">
+    <header>
+      <div className="brand-mark">S</div>
+      <div><strong>StudyLens</strong><span>Selected text → grounded course tutor</span></div>
+    </header>
 
-      <div className="privacy-note">
-        <span>✓</span>
-        <p><strong>Your conversation stays private.</strong><br />Only the metadata below is sent.</p>
-      </div>
+    <section className="privacy-card">
+      <span>✓</span>
+      <p><strong>Explicit selection only</strong>This extension reads only the text visible below after you click it. It never reads cookies, browsing history, or the rest of the page.</p>
+    </section>
 
-      <form onSubmit={submit}>
-        <div className="field-grid">
-          <label>
-            AI tool
-            <select
-              value={form.provider}
-              onChange={(event) => setForm({ ...form, provider: event.target.value as Provider })}
-            >
-              <option value="ChatGpt">ChatGPT</option>
-              <option value="Claude">Claude</option>
-              <option value="Gemini">Gemini</option>
-              <option value="Copilot">Copilot</option>
-              <option value="Other">Other</option>
-            </select>
-          </label>
-          <label>
-            Learning goal
-            <select
-              value={form.activity}
-              onChange={(event) => setForm({ ...form, activity: event.target.value as Activity })}
-            >
-              <option value="UnderstandConcept">Understand a concept</option>
-              <option value="Practice">Practice</option>
-              <option value="Research">Research</option>
-              <option value="Writing">Writing</option>
-              <option value="Coding">Coding</option>
-              <option value="Other">Other</option>
-            </select>
-          </label>
-          <label>
-            Minutes
-            <input
-              type="number"
-              min="1"
-              max="480"
-              value={form.durationMinutes}
-              onChange={(event) => setForm({ ...form, durationMinutes: Number(event.target.value) })}
-            />
-          </label>
-          <label>
-            Interactions
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={form.interactionCount}
-              onChange={(event) => setForm({ ...form, interactionCount: Number(event.target.value) })}
-            />
-          </label>
-        </div>
+    <label>
+      Course
+      <select value={courseId} onChange={(event) => setCourseId(event.target.value)}>
+        {courses.map((course) => <option value={course.courseId} key={course.courseId}>{course.courseName ?? course.courseId}</option>)}
+      </select>
+    </label>
 
-        <label>
-          Approximate words you typed
-          <input
-            type="number"
-            min="0"
-            max="5000"
-            value={form.promptWordCount}
-            onChange={(event) => setForm({ ...form, promptWordCount: Number(event.target.value) })}
-          />
-          <small>Only the number is recorded, never the text.</small>
-        </label>
+    <label>
+      Selected text
+      <textarea
+        aria-label="Selected text"
+        maxLength={maximumSelectionLength}
+        placeholder="Select a concept, paragraph, or error message on the current page."
+        value={selection}
+        onChange={(event) => setSelection(event.target.value)}
+      />
+      <small>{selection.length}/{maximumSelectionLength} characters · source: {sourceTitle}</small>
+    </label>
 
-        <fieldset>
-          <legend>How helpful was this session?</legend>
-          <div className="rating-options">
-            {[1, 2, 3, 4, 5].map((rating) => (
-              <button
-                className={form.helpfulnessRating === rating ? 'selected' : ''}
-                key={rating}
-                type="button"
-                onClick={() => setForm({ ...form, helpfulnessRating: rating })}
-                aria-label={`${rating} out of 5`}
-              >
-                {rating}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        <button className="save-button" type="submit" disabled={!participantId || status === 'saving'}>
-          {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved ✓' : 'Save reflection'}
-        </button>
-
-        <button
-          className="dashboard-button"
-          type="button"
-          disabled={!participantId}
-          onClick={() => openDashboard(participantId)}
-        >
-          Open my dashboard ↗
-        </button>
-
-        {status === 'error' && (
-          <p className="error-message">Could not reach the local API on port 5080.</p>
-        )}
-      </form>
-    </main>
-  )
+    <p className={`status-message ${status}`}>{message}</p>
+    <button className="open-button" disabled={!canOpen} onClick={openStudyLens}>Open in StudyLens ↗</button>
+    <p className="transfer-note">The text is placed in a local URL fragment, so it is not sent to a remote server.</p>
+  </main>
 }
 
-async function getOrCreateParticipantId() {
-  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-    const stored = await chrome.storage.local.get('participantId')
-    if (typeof stored.participantId === 'string') return stored.participantId
-
-    const id = `student-${crypto.randomUUID()}`
-    await chrome.storage.local.set({ participantId: id })
-    return id
+async function readPageSelection(): Promise<PageSelection> {
+  if (typeof chrome === 'undefined' || !chrome.tabs?.query || !chrome.scripting?.executeScript) {
+    return { text: '', title: document.title }
   }
 
-  const existing = localStorage.getItem('participantId')
-  if (existing) return existing
-  const id = `student-${crypto.randomUUID()}`
-  localStorage.setItem('participantId', id)
-  return id
-}
-
-async function getCurrentTabUrl() {
-  if (typeof chrome === 'undefined' || !chrome.tabs?.query) return window.location.href
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  return tab?.url ?? ''
-}
+  if (tab?.id == null) return { text: '', title: tab?.title ?? 'Current page' }
 
-function detectProvider(url: string): Provider {
-  if (url.includes('chatgpt.com') || url.includes('chat.openai.com')) return 'ChatGpt'
-  if (url.includes('claude.ai')) return 'Claude'
-  if (url.includes('gemini.google.com')) return 'Gemini'
-  if (url.includes('copilot.microsoft.com')) return 'Copilot'
-  return 'Other'
-}
-
-function openDashboard(participantId: string) {
-  const url = `http://localhost:5173/?participantId=${encodeURIComponent(participantId)}`
-  if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
-    void chrome.tabs.create({ url })
-    return
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => window.getSelection()?.toString() ?? '',
+    })
+    return { text: typeof result?.result === 'string' ? result.result : '', title: tab.title ?? 'Current page' }
+  } catch {
+    return { text: '', title: tab.title ?? 'Restricted browser page' }
   }
-  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 export default App

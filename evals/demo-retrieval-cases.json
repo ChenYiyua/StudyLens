@@ -1,0 +1,18 @@
+[
+  {
+    "query": "Why should a course-specific AI answer keep auditable citations?",
+    "expectedTopPath": "Lecture/01-grounded-ai-tutoring.md"
+  },
+  {
+    "query": "What should a student do after AI generates a code change?",
+    "expectedTopPath": "Lecture/02-ai-assisted-programming.md"
+  },
+  {
+    "query": "Why must a browser extension avoid silently scraping an entire page?",
+    "expectedTopPath": "Lecture/03-privacy-and-learning-research.md"
+  },
+  {
+    "query": "How should I debug a percentage regression in AI-generated code?",
+    "expectedTopPath": "Exercises/01-debugging-and-testing.md"
+  }
+]

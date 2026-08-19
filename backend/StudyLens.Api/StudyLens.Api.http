@@ -1,40 +1,51 @@
 @host = http://127.0.0.1:5080
-@participantId = demo-student
+@courseId = tum-inhn0017-eam
 
 GET {{host}}/health
 
 ###
 
-POST {{host}}/api/events
+GET {{host}}/api/courses
+
+###
+
+GET {{host}}/api/courses/{{courseId}}
+
+###
+
+GET {{host}}/api/courses/{{courseId}}/search?query=architecture%20view%20viewpoint&limit=6
+
+###
+
+GET {{host}}/api/ai/status
+
+###
+
+POST {{host}}/api/courses/{{courseId}}/tutor/explain
 Content-Type: application/json
 
 {
-  "participantId": "{{participantId}}",
-  "provider": "ChatGpt",
-  "activity": "Coding",
-  "startedAtUtc": "2026-08-18T18:00:00Z",
-  "durationMinutes": 25,
-  "interactionCount": 4,
-  "promptWordCount": 80,
-  "helpfulnessRating": 5
+  "question": "What is the difference between an architecture view and a viewpoint?",
+  "language": "bilingual"
 }
 
 ###
 
-GET {{host}}/api/events?participantId={{participantId}}
+POST {{host}}/api/courses/{{courseId}}/tutor/practice
+Content-Type: application/json
+
+{
+  "topic": "architecture view and viewpoint",
+  "difficulty": "exam",
+  "questionCount": 3
+}
 
 ###
 
-GET {{host}}/api/events/export?participantId={{participantId}}
+POST {{host}}/api/courses/{{courseId}}/tutor/grade
+Content-Type: application/json
 
-###
-
-GET {{host}}/api/insights?participantId={{participantId}}
-
-###
-
-POST {{host}}/api/demo/seed?participantId={{participantId}}
-
-###
-
-DELETE {{host}}/api/events?participantId={{participantId}}
+{
+  "question": "Define an architecture viewpoint.",
+  "studentAnswer": "A viewpoint defines the conventions used to construct and interpret an architecture view for particular stakeholder concerns."
+}
