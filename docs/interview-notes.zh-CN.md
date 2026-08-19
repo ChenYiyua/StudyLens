@@ -79,15 +79,20 @@ English:
 - 数据进入本机 URL fragment，不成为 HTTP request path；
 - Dashboard 消费后立刻清除 fragment。
 
+端到端交接不是“扩展只生成一个链接”就结束。Dashboard 现在会解析并校验 handoff，按可用课程切换上下文，把选中文字显示在独立卡片中，然后复用同一个 course-grounded explain API。无法识别的 course ID 会被丢弃，问题长度也在扩展和 Dashboard 两端限制为 300 个字符。
+
 如果以后做真实用户研究，还需要 consent notice、retention policy、pseudonymous participant ID 和可撤回机制；当前原型不假装已经满足完整研究治理。
 
 ## 测试和评估怎么讲
 
-- 4 个 Python 测试验证 PDF/Markdown/text indexing 和 stable metadata；
-- 20 个 C# 测试覆盖 retrieval、完整 evidence detail、course isolation、API validation、Tutor structured output、repository 和安全文件路径；
+- 5 个 Python 测试验证 PDF/Markdown/text indexing、page preview 和 stable metadata；
+- 34 个 C# 测试覆盖 retrieval、完整 evidence detail、course isolation、API validation、Chrome extension CORS、Tutor structured output、repository 和安全文件路径；
+- 4 个 TypeScript 测试锁住 extension URL 编码、文本长度限制、Dashboard handoff 解析和无效 course fallback；
 - 4 个固定 retrieval cases 要求期望文档 rank first；
-- Dashboard 和 extension 都做 lint + production build；
-- 真实本机 smoke test 已验证 MongoDB health、AI grade write、history read 和浏览器显示。
+- Dashboard 和 extension 都做 lint、test 和 production build；
+- 真实本机 smoke test 已验证 MongoDB health、AI grade write、history read、handoff fragment 消费和浏览器显示。
+
+Chrome 的扩展管理安全页面不能由自动化工具代替用户操作，因此在亲自在 `chrome://extensions` 完成 **Load unpacked** 并跑完 README 的五步 checklist 前，不说“已经完成真实工具栏端到端验证”。目前可以准确说：扩展和 Dashboard 两端的 handoff contract 有自动化测试，Dashboard 接收页有真实浏览器验证，最终安装检查需要一次人工操作。
 
 固定 benchmark 的价值是：以后换 embedding、hybrid retrieval 或模型时，能够比较结果，而不是凭感觉说“好像更聪明”。
 

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "node --test --experimental-strip-types src/handoff.test.ts",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"

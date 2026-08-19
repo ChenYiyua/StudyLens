@@ -4,7 +4,7 @@
 ![ASP.NET Core](https://img.shields.io/badge/ASP.NET_Core-C%23-5d65d8?logo=dotnet&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-NoSQL-19a974?logo=mongodb&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-Ingestion-2877c7?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-38_passing-16885f)
+![Tests](https://img.shields.io/badge/tests-43_passing-16885f)
 
 StudyLens is a multi-course, source-grounded AI learning companion for real study material. Its primary workflow teaches a selected lecture, explains the course's own exercise and solution, then generates a knowledge check and grades the student's answer against the same source.
 
@@ -23,6 +23,17 @@ A clean clone includes a small original demo course and retrieval benchmark. The
   </tr>
 </table>
 
+<table>
+  <tr>
+    <td width="35%"><img src="docs/images/studylens-extension-popup.png" alt="StudyLens browser extension review popup" /></td>
+    <td width="65%"><img src="docs/images/studylens-extension-handoff.png" alt="Browser selection handed to the StudyLens dashboard" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Explicit-selection bridge</strong><br/>Review or edit the selected text and choose its course before anything leaves the page.</td>
+    <td align="center"><strong>Grounded dashboard handoff</strong><br/>The dashboard consumes the local fragment, removes it from the address bar, and offers a cited course explanation.</td>
+  </tr>
+</table>
+
 The screenshots are from the running local EAM reference deployment. Private course files and extracted text are excluded from Git.
 
 ## Product workflow
@@ -36,6 +47,8 @@ flowchart LR
     E --> Q[3. Generated knowledge check]
     Q --> F[Evidence-based feedback]
     F --> M[(MongoDB attempt history)]
+    W[Explicitly selected web text] --> B[Extension review and course choice]
+    B --> L
 ```
 
 This is more than a PDF chatbot:
@@ -59,7 +72,7 @@ This is more than a PDF chatbot:
 - automatic pairing and walkthrough of course-provided exercises and solutions;
 - course-grounded knowledge-check generation and formative grading;
 - MongoDB-backed attempt history, aggregate score, reload, and user-controlled deletion;
-- privacy-controlled Chrome/Edge extension handoff;
+- privacy-controlled Manifest V3 Chrome/Edge extension handoff with editable selection, course choice, and no cookie or history permission;
 - selectable local Qwen3.5, OpenAI GPT, and Google Gemini providers;
 - public demo corpus plus fixed retrieval evaluation cases;
 - Python, C#, API, formatting, dashboard, and extension checks in CI.
@@ -136,7 +149,17 @@ npm run build
 
 Then open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `frontend\extension\dist`.
 
-On any ordinary page, select a concept, open StudyLens, review the selected text, choose a course, and click **Open in StudyLens**. The extension does not request cookies or browsing-history access. The selection is placed in a local URL fragment, consumed by the dashboard, and immediately removed from the address bar.
+On any ordinary page, select a concept, open StudyLens from the browser toolbar, review the selected text, choose a course, and click **Explain with course evidence**. Keep the local StudyLens server running at `http://127.0.0.1:5080`.
+
+The Manifest V3 extension requests only `activeTab` and `scripting`. It does not request cookies or browsing-history access, does not run a passive background content script, and calls `window.getSelection()` only after the user opens it. The reviewed text is placed in a local URL fragment, consumed by the dashboard, and immediately removed from the address bar.
+
+Manual smoke-test checklist:
+
+1. Open an ordinary webpage and select a short paragraph.
+2. Open the StudyLens toolbar icon and confirm that only that paragraph appears.
+3. Edit the text if needed, choose a course, and click **Explain with course evidence**.
+4. Confirm that the dashboard shows the Browser Extension Handoff card and the address bar no longer contains a `#from=extension` fragment.
+5. Dismiss the card or request a course-grounded explanation and inspect its file/page citations.
 
 ## MongoDB data model
 
@@ -158,7 +181,7 @@ A compound index on `(courseId, createdAtUtc descending)` supports course histor
 powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
 ```
 
-The current suite runs 5 Python indexing/rendering tests, 33 C# tests, .NET formatting verification, and lint/production builds for both React applications. CI deliberately uses fake AI providers and does not download multi-gigabyte model weights.
+The current suite runs 5 Python indexing/rendering tests, 34 C# tests, and 4 TypeScript handoff-contract tests, plus .NET formatting verification and lint/production builds for both React applications. CI deliberately uses fake AI providers and does not download multi-gigabyte model weights.
 
 ## Move to another computer
 

@@ -35,6 +35,8 @@ try {
         }
         npm run lint
         if ($LASTEXITCODE -ne 0) { throw 'Dashboard lint failed.' }
+        npm test
+        if ($LASTEXITCODE -ne 0) { throw 'Dashboard tests failed.' }
         npm run build
         if ($LASTEXITCODE -ne 0) { throw 'Dashboard build failed.' }
     }
@@ -50,6 +52,8 @@ try {
         }
         npm run lint
         if ($LASTEXITCODE -ne 0) { throw 'Extension lint failed.' }
+        npm test
+        if ($LASTEXITCODE -ne 0) { throw 'Extension tests failed.' }
         npm run build
         if ($LASTEXITCODE -ne 0) { throw 'Extension build failed.' }
     }

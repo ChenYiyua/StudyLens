@@ -810,6 +810,22 @@ h1 em { background: linear-gradient(100deg, #1479e9 8%, #4d72e8 50%, #745edb 96%
 .model-setup-body code { color: #e8efff; background: #173a78; }
 footer { border-top-color: rgba(51,97,190,.11); color: #7182a2; }
 
+.extension-context-panel { margin-bottom: 26px; overflow: hidden; border: 1px solid rgba(45, 104, 221, .2); border-radius: 20px; background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(232,243,255,.88)); box-shadow: 0 22px 52px rgba(39, 81, 158, .12), inset 0 1px 0 #fff; }
+.extension-context-heading { display: grid; grid-template-columns: 46px 1fr auto; gap: 13px; align-items: center; padding: 18px 20px 14px; border-bottom: 1px solid rgba(49,98,196,.11); background: linear-gradient(90deg, rgba(220,238,255,.82), rgba(235,232,255,.7)); }
+.extension-context-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; color: #fff; background: linear-gradient(145deg, #2487ef, #5a63dc); box-shadow: 0 12px 28px rgba(48,89,188,.22); font-size: 17px; font-weight: 900; }
+.extension-context-heading h2 { margin: 2px 0 3px; color: #183965; font-size: 19px; }
+.extension-context-heading div > span { color: #7283a1; font-size: 11px; }
+.extension-context-heading > button { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid rgba(50,98,194,.15); border-radius: 10px; color: #60749a; background: rgba(255,255,255,.7); font-size: 18px; }
+.extension-context-panel blockquote { margin: 18px 20px 14px; padding: 15px 17px; border-left: 3px solid #397ce0; border-radius: 0 12px 12px 0; color: #38547e; background: rgba(235,244,255,.78); font-size: 14px; line-height: 1.65; }
+.extension-context-actions { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 20px 19px; }
+.extension-context-actions > span { display: flex; align-items: center; gap: 7px; color: #7484a1; font-size: 10px; }
+.extension-context-actions > span i { width: 7px; height: 7px; border-radius: 50%; background: #3197e9; box-shadow: 0 0 10px rgba(49,151,233,.38); }
+.extension-context-actions > button { min-height: 40px; padding: 0 16px; border: 0; border-radius: 11px; color: #fff; background: linear-gradient(100deg, #287de7, #5865db); box-shadow: 0 12px 28px rgba(45,86,183,.2); font-size: 11px; font-weight: 850; }
+.extension-context-actions > button:disabled { opacity: .48; box-shadow: none; }
+.extension-context-panel > .lesson-result { margin: 0 20px 20px; }
+
 @media (max-width: 720px) {
   .sidebar { border-bottom-color: rgba(255,255,255,.17); background: linear-gradient(155deg, #1649a5, #18377f); }
+  .extension-context-actions { align-items: stretch; flex-direction: column; }
+  .extension-context-actions > button { width: 100%; }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
+import { createStudyLensUrl, maximumSelectionLength, normaliseSelection } from './handoff'
 
 interface CourseStatus {
   courseId: string
@@ -18,8 +19,6 @@ interface PageSelection {
 }
 
 const API_URL = 'http://127.0.0.1:5080'
-const maximumSelectionLength = 300
-
 function App() {
   const [courses, setCourses] = useState<CourseStatus[]>([])
   const [courseId, setCourseId] = useState('')
@@ -45,7 +44,7 @@ function App() {
             ? catalog.defaultCourseId
             : readyCourses[0]?.courseId ?? '',
         )
-        setSelection(pageSelection.text.slice(0, maximumSelectionLength))
+        setSelection(normaliseSelection(pageSelection.text))
         setSourceTitle(pageSelection.title || 'Current page')
         setStatus('ready')
         setMessage(pageSelection.text
@@ -67,13 +66,11 @@ function App() {
 
   function openStudyLens() {
     if (!canOpen) return
-    const fragment = new URLSearchParams({
-      course: courseId,
-      question: selection.trim(),
+    const url = createStudyLensUrl(API_URL, {
+      courseId,
+      question: selection,
       source: sourceTitle,
-      from: 'extension',
     })
-    const url = `${API_URL}/#${fragment.toString()}`
     if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
       void chrome.tabs.create({ url })
     } else {
@@ -84,12 +81,12 @@ function App() {
   return <main className="popup-shell">
     <header>
       <div className="brand-mark">S</div>
-      <div><strong>StudyLens</strong><span>Selected text → grounded course tutor</span></div>
+      <div><strong>StudyLens Bridge</strong><span>Selected text → course-grounded explanation</span></div>
     </header>
 
     <section className="privacy-card">
       <span>✓</span>
-      <p><strong>Explicit selection only</strong>This extension reads only the text visible below after you click it. It never reads cookies, browsing history, or the rest of the page.</p>
+      <p><strong>You stay in control</strong>Only the text shown below is transferred. StudyLens never reads cookies, browsing history, or the rest of the page.</p>
     </section>
 
     <label>
@@ -106,14 +103,21 @@ function App() {
         maxLength={maximumSelectionLength}
         placeholder="Select a concept, paragraph, or error message on the current page."
         value={selection}
-        onChange={(event) => setSelection(event.target.value)}
+        onChange={(event) => {
+          setSelection(event.target.value)
+          if (status === 'ready') {
+            setMessage(event.target.value.trim()
+              ? 'Review or edit this text before opening StudyLens.'
+              : 'No text is selected. Select text on the page, then reopen this extension.')
+          }
+        }}
       />
       <small>{selection.length}/{maximumSelectionLength} characters · source: {sourceTitle}</small>
     </label>
 
     <p className={`status-message ${status}`}>{message}</p>
-    <button className="open-button" disabled={!canOpen} onClick={openStudyLens}>Open in StudyLens ↗</button>
-    <p className="transfer-note">The text is placed in a local URL fragment, so it is not sent to a remote server.</p>
+    <button className="open-button" disabled={!canOpen} onClick={openStudyLens}><span>Explain with course evidence</span><b>↗</b></button>
+    <p className="transfer-note"><i /> Local handoff · the fragment is removed as soon as StudyLens opens.</p>
   </main>
 }
 

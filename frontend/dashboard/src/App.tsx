@@ -4,6 +4,7 @@ import './App.css'
 import {
   clearStudyHistory,
   createPractice,
+  explainCourse,
   explainExercise,
   explainLecture,
   fetchAiStatus,
@@ -28,9 +29,11 @@ import type {
   StudyHistory,
   TutorCitation,
 } from './types'
+import { addressWithoutHandoff, parseExtensionHandoff } from './extensionHandoff'
+import type { ExtensionHandoff } from './extensionHandoff'
 
 type WorkspaceMode = 'study' | 'feedback'
-type WorkingStage = 'course' | 'lecture' | 'exercise' | 'practice' | 'grade' | null
+type WorkingStage = 'course' | 'context' | 'lecture' | 'exercise' | 'practice' | 'grade' | null
 type CheckScope = 'lecture' | 'exercise'
 
 function App() {
@@ -56,6 +59,8 @@ function App() {
   const [courseImportOpen, setCourseImportOpen] = useState(false)
   const [importingCourse, setImportingCourse] = useState(false)
   const [modelSetupOpen, setModelSetupOpen] = useState(false)
+  const [extensionContext, setExtensionContext] = useState<ExtensionHandoff | null>(null)
+  const [extensionExplanation, setExtensionExplanation] = useState<ExplainResponse | null>(null)
 
   const status = useMemo(
     () => catalog?.courses.find((course) => course.courseId === courseId) ?? null,
@@ -93,7 +98,18 @@ function App() {
           ?? modelCatalog.models.find((model) => model.available)
           ?? modelCatalog.models[0]
         setModelId(preferredModel?.id ?? '')
-        const initialCourseId = courseCatalog.defaultCourseId || courseCatalog.courses[0]?.courseId || ''
+        const handoff = parseExtensionHandoff(
+          window.location.hash,
+          courseCatalog.courses.filter((course) => course.ready).map((course) => course.courseId),
+        )
+        if (handoff) {
+          setExtensionContext(handoff)
+          window.history.replaceState(null, '', addressWithoutHandoff(window.location))
+        }
+        const initialCourseId = handoff?.courseId
+          || courseCatalog.defaultCourseId
+          || courseCatalog.courses[0]?.courseId
+          || ''
         setCourseId(initialCourseId)
         if (initialCourseId) {
           const [path, studyHistory] = await Promise.all([
@@ -135,6 +151,7 @@ function App() {
     setSelectedQuestion(null)
     setStudentAnswer('')
     setGrade(null)
+    setExtensionExplanation(null)
   }
 
   async function switchCourse(nextCourseId: string) {
@@ -172,6 +189,19 @@ function App() {
       setLectureExplanation(await explainLecture(courseId, selectedLectureId, modelId))
     } catch (requestError) {
       setError(readError(requestError, 'The selected lecture could not be explained.'))
+    } finally {
+      setWorkingStage(null)
+    }
+  }
+
+  async function explainExtensionContext() {
+    if (!courseId || !extensionContext || !selectedModel?.available) return
+    setWorkingStage('context')
+    setError('')
+    try {
+      setExtensionExplanation(await explainCourse(courseId, extensionContext.question, modelId))
+    } catch (requestError) {
+      setError(readError(requestError, 'The selected web text could not be explained.'))
     } finally {
       setWorkingStage(null)
     }
@@ -338,6 +368,16 @@ function App() {
 
         {error && <div className="error-banner" role="alert">{error}</div>}
         {selectedModel && !selectedModel.available && <div className="model-warning"><strong>{selectedModel.displayName} is not connected yet.</strong><span>You can select it now, but connect its API or local runtime before starting a lesson.</span><button onClick={() => setModelSetupOpen(true)}>Show setup</button></div>}
+        {mode === 'study' && extensionContext && <ExtensionContextPanel
+          aiReady={selectedModel?.available === true}
+          context={extensionContext}
+          explanation={extensionExplanation}
+          courseId={courseId}
+          sourceAvailable={status?.sourceAvailable === true}
+          working={workingStage === 'context'}
+          onDismiss={() => { setExtensionContext(null); setExtensionExplanation(null) }}
+          onExplain={() => { void explainExtensionContext() }}
+        />}
 
         {mode === 'study' ? <LearningJourney
           aiReady={selectedModel?.available === true}
@@ -389,6 +429,31 @@ function App() {
 
 function AmbientBackground() {
   return <div aria-hidden="true" className="ambient-scene"><div className="ambient-grid" /><div className="ambient-orb orb-one" /><div className="ambient-orb orb-two" /><div className="ambient-orb orb-three" /><div className="particle-field">{Array.from({ length: 32 }, (_, index) => <i key={index} style={{ '--particle-x': `${(index * 37 + 11) % 100}%`, '--particle-y': `${(index * 61 + 7) % 100}%`, '--particle-size': `${2 + (index % 4)}px`, '--particle-delay': `${-(index % 11) * 1.2}s`, '--particle-duration': `${12 + (index % 7) * 2}s` } as CSSProperties} />)}</div></div>
+}
+
+function ExtensionContextPanel(props: {
+  aiReady: boolean
+  context: ExtensionHandoff
+  courseId: string
+  explanation: ExplainResponse | null
+  sourceAvailable: boolean
+  working: boolean
+  onDismiss: () => void
+  onExplain: () => void
+}) {
+  return <section className="extension-context-panel">
+    <div className="extension-context-heading">
+      <div className="extension-context-icon">↗</div>
+      <div><p className="eyebrow">BROWSER EXTENSION HANDOFF</p><h2>Connect this page to your course</h2><span>Selected on {props.context.source}</span></div>
+      <button aria-label="Dismiss browser context" onClick={props.onDismiss}>×</button>
+    </div>
+    <blockquote>{props.context.question}</blockquote>
+    <div className="extension-context-actions">
+      <span><i /> The URL fragment has already been removed.</span>
+      <button disabled={!props.aiReady || props.working} onClick={props.onExplain}>{props.working ? 'Finding course evidence…' : 'Explain with course evidence'}</button>
+    </div>
+    {props.explanation && <LessonResult label="WEB CONTEXT EXPLANATION" response={props.explanation} courseId={props.courseId} sourceAvailable={props.sourceAvailable} />}
+  </section>
 }
 
 interface LearningJourneyProps {

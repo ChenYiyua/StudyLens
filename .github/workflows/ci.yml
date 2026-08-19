@@ -41,10 +41,12 @@ jobs:
         run: |
           npm ci
           npm run lint
+          npm test
           npm run build
       - name: Build browser extension
         working-directory: frontend/extension
         run: |
           npm ci
           npm run lint
+          npm test
           npm run build
