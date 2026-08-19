@@ -25,6 +25,14 @@ English:
 
 > I built a small end-to-end prototype around the same technical boundaries so that I could contribute faster and discuss concrete trade-offs rather than only expressing interest.
 
+## 为什么启动动画不是“只做特效”
+
+启动页把产品的三个真实边界——course graph、evidence engine 和 AI orchestration——转成约三秒的系统初始化叙事，然后自动进入学习工作台。它不是用动画掩盖功能：用户可以立即跳过；动画期间底层界面是 inert 的，不会误触；系统设置为 reduced motion 时会直接进入工作台。主界面的 pointer-responsive depth、分阶段进入和 hover feedback 也只用于表达层级和可操作状态，不改变核心学习流程。
+
+面试里可以这样说：
+
+> I treated motion as product feedback rather than decoration. The intro is brief and skippable, respects reduced-motion preferences, and maps directly to the system's course, retrieval, and model layers. The workspace remains the primary product, so the animation never blocks a returning user who wants to continue immediately.
+
 ## 一次评分请求怎么走
 
 1. React 发送 `courseId`、题目和 student answer。

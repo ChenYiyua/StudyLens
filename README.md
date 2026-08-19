@@ -10,7 +10,18 @@ StudyLens is a multi-course, source-grounded AI learning companion for real stud
 
 A clean clone includes a small original demo course and retrieval benchmark. The private reference deployment uses TUM's **Enterprise Architecture Management and Reference Models (INHN0017)** corpus: 52 PDFs, 926 pages, and 967 searchable chunks. Those copyrighted files and their extracted index remain local and are not committed.
 
-![StudyLens course-learning workspace](docs/images/studylens-overview.png)
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/studylens-launch-sequence.png" alt="StudyLens enterprise launch sequence" /></td>
+    <td width="50%"><img src="docs/images/studylens-enterprise-workspace.png" alt="StudyLens course-learning workspace" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>System-aware launch sequence</strong><br/>A brief, skippable initialization view establishes the workspace and visualizes the course, evidence, and AI layers.</td>
+    <td align="center"><strong>Focused learning workspace</strong><br/>A warm editorial enterprise interface leads students through lecture, exercise, and knowledge-check stages.</td>
+  </tr>
+</table>
+
+The interface uses restrained pointer-responsive depth, staged workspace reveals, and state-aware micro-interactions. The launch sequence completes automatically in about three seconds, can be skipped immediately, locks the inactive workspace against accidental input, and is disabled when the operating system requests reduced motion.
 
 <table>
   <tr>

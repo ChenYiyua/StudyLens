@@ -35,8 +35,11 @@ import type { ExtensionHandoff } from './extensionHandoff'
 type WorkspaceMode = 'study' | 'feedback'
 type WorkingStage = 'course' | 'context' | 'lecture' | 'exercise' | 'practice' | 'grade' | null
 type CheckScope = 'lecture' | 'exercise'
+type LaunchPhase = 'active' | 'leaving' | 'hidden'
 
 function App() {
+  const [launchPhase, setLaunchPhase] = useState<LaunchPhase>(() =>
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'hidden' : 'active')
   const [catalog, setCatalog] = useState<CourseCatalog | null>(null)
   const [courseId, setCourseId] = useState('')
   const [learningPath, setLearningPath] = useState<CourseLearningPath | null>(null)
@@ -84,6 +87,49 @@ function App() {
     () => learningPath?.exercises.find((unit) => unit.id === selectedExerciseId) ?? null,
     [learningPath, selectedExerciseId],
   )
+
+  useEffect(() => {
+    if (launchPhase === 'hidden') return
+    document.body.classList.add('launch-active')
+    return () => document.body.classList.remove('launch-active')
+  }, [launchPhase])
+
+  useEffect(() => {
+    if (launchPhase === 'active') {
+      const timer = window.setTimeout(() => setLaunchPhase('leaving'), 2550)
+      return () => window.clearTimeout(timer)
+    }
+    if (launchPhase === 'leaving') {
+      const timer = window.setTimeout(() => setLaunchPhase('hidden'), 620)
+      return () => window.clearTimeout(timer)
+    }
+  }, [launchPhase])
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const root = document.documentElement
+    let frameId = 0
+    const updatePointer = (event: PointerEvent) => {
+      window.cancelAnimationFrame(frameId)
+      frameId = window.requestAnimationFrame(() => {
+        root.style.setProperty('--pointer-x', `${event.clientX}px`)
+        root.style.setProperty('--pointer-y', `${event.clientY}px`)
+      })
+    }
+    const resetPointer = () => {
+      root.style.setProperty('--pointer-x', '65vw')
+      root.style.setProperty('--pointer-y', '24vh')
+    }
+    window.addEventListener('pointermove', updatePointer, { passive: true })
+    window.addEventListener('blur', resetPointer)
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      window.removeEventListener('pointermove', updatePointer)
+      window.removeEventListener('blur', resetPointer)
+      root.style.removeProperty('--pointer-x')
+      root.style.removeProperty('--pointer-y')
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -328,8 +374,9 @@ function App() {
   }
 
   return <>
+    {launchPhase !== 'hidden' && <LaunchSequence phase={launchPhase} onSkip={() => setLaunchPhase('leaving')} />}
     <AmbientBackground />
-    <div className="app-frame">
+    <div className={`app-frame ${launchPhase === 'hidden' ? 'workspace-live' : 'workspace-standby'}`} inert={launchPhase !== 'hidden'}>
       <aside className="sidebar">
         <div className="brand"><span className="brand-mark"><i /><b /></span><div><strong>StudyLens</strong><span>Learning intelligence</span></div></div>
         <div className="workspace-chip"><i /> AI WORKSPACE · ONLINE</div>
@@ -428,7 +475,34 @@ function App() {
 }
 
 function AmbientBackground() {
-  return <div aria-hidden="true" className="ambient-scene"><div className="ambient-grid" /><div className="ambient-orb orb-one" /><div className="ambient-orb orb-two" /><div className="ambient-orb orb-three" /><div className="particle-field">{Array.from({ length: 32 }, (_, index) => <i key={index} style={{ '--particle-x': `${(index * 37 + 11) % 100}%`, '--particle-y': `${(index * 61 + 7) % 100}%`, '--particle-size': `${2 + (index % 4)}px`, '--particle-delay': `${-(index % 11) * 1.2}s`, '--particle-duration': `${12 + (index % 7) * 2}s` } as CSSProperties} />)}</div></div>
+  return <div aria-hidden="true" className="ambient-scene"><div className="ambient-grid" /><div className="pointer-aura" /><div className="ambient-orb orb-one" /><div className="ambient-orb orb-two" /><div className="ambient-orb orb-three" /><div className="particle-field">{Array.from({ length: 32 }, (_, index) => <i key={index} style={{ '--particle-x': `${(index * 37 + 11) % 100}%`, '--particle-y': `${(index * 61 + 7) % 100}%`, '--particle-size': `${2 + (index % 4)}px`, '--particle-delay': `${-(index % 11) * 1.2}s`, '--particle-duration': `${12 + (index % 7) * 2}s` } as CSSProperties} />)}</div></div>
+}
+
+function LaunchSequence(props: { phase: LaunchPhase; onSkip: () => void }) {
+  return <section className="launch-screen" data-phase={props.phase} aria-label="StudyLens is opening" role="status">
+    <div aria-hidden="true" className="launch-grid" />
+    <div aria-hidden="true" className="launch-horizon" />
+    <div aria-hidden="true" className="launch-scan" />
+    <div aria-hidden="true" className="launch-particles">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ '--launch-x': `${(index * 29 + 7) % 96}%`, '--launch-y': `${(index * 47 + 13) % 88}%`, '--launch-delay': `${index * -.17}s` } as CSSProperties} />)}</div>
+    <button className="launch-skip" onClick={props.onSkip}>Skip intro <span>↗</span></button>
+    <div className="launch-content">
+      <p className="launch-kicker"><i /> STUDYLENS / INTELLIGENCE WORKSPACE</p>
+      <div className="launch-emblem" aria-hidden="true">
+        <span className="launch-orbit orbit-outer"><i /><b /></span>
+        <span className="launch-orbit orbit-inner"><i /></span>
+        <span className="launch-logo"><i /><b /></span>
+      </div>
+      <h1>Knowledge,<br /><em>operationalized.</em></h1>
+      <p className="launch-copy">Connecting course evidence, model intelligence, and measurable learning progress.</p>
+      <div className="launch-status-grid" aria-label="Workspace initialization status">
+        <div><span>COURSE GRAPH</span><strong><i /> ONLINE</strong></div>
+        <div><span>EVIDENCE ENGINE</span><strong><i /> VERIFIED</strong></div>
+        <div><span>AI ORCHESTRATION</span><strong><i /> READY</strong></div>
+      </div>
+      <div className="launch-progress"><span /><i /></div>
+      <p className="launch-progress-copy"><span>Initializing source-grounded workspace</span><b>01 — 03</b></p>
+    </div>
+  </section>
 }
 
 function ExtensionContextPanel(props: {
