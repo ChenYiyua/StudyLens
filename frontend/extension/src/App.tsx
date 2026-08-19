@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { createStudyLensUrl, maximumSelectionLength, normaliseSelection } from './handoff'
+import {
+  createStudyLensUrl,
+  maximumSelectionLength,
+  normaliseSelection,
+  pendingSelectionKey,
+  readPendingSelection,
+} from './handoff'
 
 interface CourseStatus {
   courseId: string
@@ -122,6 +128,9 @@ function App() {
 }
 
 async function readPageSelection(): Promise<PageSelection> {
+  const pendingSelection = await readContextMenuSelection()
+  if (pendingSelection) return pendingSelection
+
   if (typeof chrome === 'undefined' || !chrome.tabs?.query || !chrome.scripting?.executeScript) {
     return { text: '', title: document.title }
   }
@@ -137,6 +146,18 @@ async function readPageSelection(): Promise<PageSelection> {
     return { text: typeof result?.result === 'string' ? result.result : '', title: tab.title ?? 'Current page' }
   } catch {
     return { text: '', title: tab.title ?? 'Restricted browser page' }
+  }
+}
+
+async function readContextMenuSelection(): Promise<PageSelection | null> {
+  if (typeof chrome === 'undefined' || !chrome.storage?.session) return null
+  try {
+    const stored = await chrome.storage.session.get(pendingSelectionKey)
+    await chrome.storage.session.remove(pendingSelectionKey)
+    const pending = readPendingSelection(stored[pendingSelectionKey])
+    return pending ? { text: pending.text, title: pending.title } : null
+  } catch {
+    return null
   }
 }
 

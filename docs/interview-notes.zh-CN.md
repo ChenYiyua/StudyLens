@@ -72,8 +72,9 @@ English:
 
 第一版就限制为 user-initiated explicit selection：
 
-- 只有用户点击扩展时才执行读取；
-- 只调用 `window.getSelection()`；
+- 推荐入口是选中文字后的右键菜单；浏览器把明确选择的 `selectionText` 交给扩展，因此不会因为点击工具栏导致页面失焦而丢失选区；
+- 工具栏入口仍只在用户点击后调用 `window.getSelection()`，作为兼容性 fallback；
+- 右键入口只用 `storage.session` 暂存选区，弹窗读取后立即删除；
 - 不申请 cookies 或 history 权限；
 - 用户能在发送前编辑或取消；
 - 数据进入本机 URL fragment，不成为 HTTP request path；
@@ -87,12 +88,12 @@ English:
 
 - 5 个 Python 测试验证 PDF/Markdown/text indexing、page preview 和 stable metadata；
 - 34 个 C# 测试覆盖 retrieval、完整 evidence detail、course isolation、API validation、Chrome extension CORS、Tutor structured output、repository 和安全文件路径；
-- 4 个 TypeScript 测试锁住 extension URL 编码、文本长度限制、Dashboard handoff 解析和无效 course fallback；
+- 6 个 TypeScript 测试锁住 extension URL 编码、文本长度限制、右键暂存选区的 freshness、Dashboard handoff 解析和无效 course fallback；
 - 4 个固定 retrieval cases 要求期望文档 rank first；
 - Dashboard 和 extension 都做 lint、test 和 production build；
 - 真实本机 smoke test 已验证 MongoDB health、AI grade write、history read、handoff fragment 消费和浏览器显示。
 
-Chrome 的扩展管理安全页面不能由自动化工具代替用户操作，因此在亲自在 `chrome://extensions` 完成 **Load unpacked** 并跑完 README 的五步 checklist 前，不说“已经完成真实工具栏端到端验证”。目前可以准确说：扩展和 Dashboard 两端的 handoff contract 有自动化测试，Dashboard 接收页有真实浏览器验证，最终安装检查需要一次人工操作。
+Chrome/Edge 的扩展管理安全页面不能由自动化工具代替用户操作，因此在亲自在 `chrome://extensions` 或 `edge://extensions` 完成 **Load unpacked** 并跑完 README 的五步 checklist 前，不说“已经完成真实扩展端到端验证”。目前可以准确说：扩展和 Dashboard 两端的 selection/handoff contract 有自动化测试，Dashboard 接收页有真实浏览器验证，最终安装检查需要一次人工操作。
 
 固定 benchmark 的价值是：以后换 embedding、hybrid retrieval 或模型时，能够比较结果，而不是凭感觉说“好像更聪明”。
 

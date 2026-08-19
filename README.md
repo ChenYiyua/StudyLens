@@ -4,7 +4,7 @@
 ![ASP.NET Core](https://img.shields.io/badge/ASP.NET_Core-C%23-5d65d8?logo=dotnet&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-NoSQL-19a974?logo=mongodb&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-Ingestion-2877c7?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-43_passing-16885f)
+![Tests](https://img.shields.io/badge/tests-45_passing-16885f)
 
 StudyLens is a multi-course, source-grounded AI learning companion for real study material. Its primary workflow teaches a selected lecture, explains the course's own exercise and solution, then generates a knowledge check and grades the student's answer against the same source.
 
@@ -149,14 +149,14 @@ npm run build
 
 Then open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `frontend\extension\dist`.
 
-On any ordinary page, select a concept, open StudyLens from the browser toolbar, review the selected text, choose a course, and click **Explain with course evidence**. Keep the local StudyLens server running at `http://127.0.0.1:5080`.
+On any ordinary page, select a concept, right-click it, and choose **Explain “…” with StudyLens**. The context-menu click captures the explicit selection before the page loses focus, then opens the review popup. Choose a course and click **Explain with course evidence**. The toolbar button remains available as a fallback on pages that preserve their selection. Keep the local StudyLens server running at `http://127.0.0.1:5080`.
 
-The Manifest V3 extension requests only `activeTab` and `scripting`. It does not request cookies or browsing-history access, does not run a passive background content script, and calls `window.getSelection()` only after the user opens it. The reviewed text is placed in a local URL fragment, consumed by the dashboard, and immediately removed from the address bar.
+The Manifest V3 extension requests `activeTab`, `scripting`, `contextMenus`, and `storage`. The context menu appears only for a user selection, while `storage.session` temporarily holds that selection until the popup consumes and deletes it. It does not request cookies or browsing-history access and does not run a passive page content script. The reviewed text is placed in a local URL fragment, consumed by the dashboard, and immediately removed from the address bar.
 
 Manual smoke-test checklist:
 
 1. Open an ordinary webpage and select a short paragraph.
-2. Open the StudyLens toolbar icon and confirm that only that paragraph appears.
+2. Right-click the selection, choose **Explain “…” with StudyLens**, and confirm that only that paragraph appears.
 3. Edit the text if needed, choose a course, and click **Explain with course evidence**.
 4. Confirm that the dashboard shows the Browser Extension Handoff card and the address bar no longer contains a `#from=extension` fragment.
 5. Dismiss the card or request a course-grounded explanation and inspect its file/page citations.
@@ -181,7 +181,7 @@ A compound index on `(courseId, createdAtUtc descending)` supports course histor
 powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
 ```
 
-The current suite runs 5 Python indexing/rendering tests, 34 C# tests, and 4 TypeScript handoff-contract tests, plus .NET formatting verification and lint/production builds for both React applications. CI deliberately uses fake AI providers and does not download multi-gigabyte model weights.
+The current suite runs 5 Python indexing/rendering tests, 34 C# tests, and 6 TypeScript selection/handoff-contract tests, plus .NET formatting verification and lint/production builds for both React applications. CI deliberately uses fake AI providers and does not download multi-gigabyte model weights.
 
 ## Move to another computer
 
