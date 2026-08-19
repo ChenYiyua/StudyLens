@@ -225,6 +225,7 @@ public sealed partial class CourseSearchService
                 0,
                 0,
                 0,
+                0,
                 new Dictionary<string, int>(),
                 corpus.Error);
         }
@@ -244,6 +245,7 @@ public sealed partial class CourseSearchService
             index.Statistics.PageCount,
             index.Statistics.EmptyPageCount,
             index.Statistics.ChunkCount,
+            index.Statistics.SkippedDocumentCount,
             materialTypes,
             null);
     }
@@ -260,7 +262,7 @@ public sealed partial class CourseSearchService
     {
         var withoutRole = Regex.Replace(
             title,
-            "(?i)(solution|solutions|answer|answers|exercise|exercises|worksheet)",
+            "(?i)(solution|solutions|answer|answers|exercise|exercises|worksheet|assignment|homework|problem|set|sheet|tutorial|task)",
             string.Empty);
         var key = Regex.Replace(withoutRole, "[^a-zA-Z0-9]+", "-").Trim('-').ToLowerInvariant();
         return string.IsNullOrWhiteSpace(key) ? title.ToLowerInvariant() : key;

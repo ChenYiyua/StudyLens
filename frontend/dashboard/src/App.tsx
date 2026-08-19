@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import './App.css'
+import { generationProgress } from './generationProgress'
+import type { GenerationStage } from './generationProgress'
 import {
   clearStudyHistory,
   createPractice,
@@ -386,13 +388,16 @@ function App() {
         </nav>
 
         <div className="course-card">
-          <p>ACTIVE COURSE</p>
-          <select aria-label="Select course" className="course-select" disabled={workingStage === 'course'} value={courseId} onChange={(event) => { void switchCourse(event.target.value) }}>
-            {catalog?.courses.map((course) => <option value={course.courseId} key={course.courseId}>{course.courseName ?? course.courseId}</option>)}
-          </select>
-          <span>{status?.courseName ?? 'No course configured'}</span>
+          <p>COURSE LIBRARY <span>{catalog?.courses.length ?? 0}</span></p>
+          <div aria-label="Available courses" className="course-library">
+            {catalog?.courses.map((course) => {
+              const courseName = course.courseName ?? course.courseId
+              const active = course.courseId === courseId
+              return <button aria-pressed={active} className={active ? 'active' : ''} disabled={workingStage === 'course'} key={course.courseId} onClick={() => { void switchCourse(course.courseId) }} title={courseName} type="button"><span>{courseInitials(courseName)}</span><strong>{courseName}</strong><i>{active ? 'ACTIVE' : 'OPEN'}</i></button>
+            })}
+          </div>
           <button className="add-course-button" onClick={() => setCourseImportOpen(true)}>＋ Add files or folder</button>
-          <div className={`corpus-state ${status?.ready ? 'ready' : ''}`}><i /> {status?.ready ? 'Learning path ready' : 'Setup required'}</div>
+          <div className={`corpus-state ${status?.ready ? 'ready' : ''}`}><i /> {status?.ready ? status.skippedDocumentCount > 0 ? `Ready · skipped ${status.skippedDocumentCount} unreadable` : 'Learning path ready' : 'Setup required'}</div>
         </div>
 
         <div className="model-card">
@@ -415,6 +420,7 @@ function App() {
 
         {error && <div className="error-banner" role="alert">{error}</div>}
         {selectedModel && !selectedModel.available && <div className="model-warning"><strong>{selectedModel.displayName} is not connected yet.</strong><span>You can select it now, but connect its API or local runtime before starting a lesson.</span><button onClick={() => setModelSetupOpen(true)}>Show setup</button></div>}
+        {workingStage && workingStage !== 'course' && <GenerationProgressPanel key={workingStage} modelName={selectedModel?.displayName ?? 'AI teacher'} stage={workingStage} />}
         {mode === 'study' && extensionContext && <ExtensionContextPanel
           aiReady={selectedModel?.available === true}
           context={extensionContext}
@@ -608,11 +614,12 @@ function MaterialPicker(props: { label: string; value: string; materials: Course
 }
 
 function MaterialMeta(props: { material: CourseMaterial }) {
-  return <div className="material-meta"><strong>{displayPath(props.material.relativePath)}</strong><span>{props.material.pageCount} pages · {props.material.chunkCount} evidence passages</span></div>
+  const unit = locationUnit(props.material.relativePath)
+  return <div className="material-meta"><strong>{displayPath(props.material.relativePath)}</strong><span>{props.material.pageCount} {unit}{props.material.pageCount === 1 ? '' : 's'} · {props.material.chunkCount} evidence passages</span></div>
 }
 
 function MaterialPairItem(props: { label: string; material: CourseMaterial | null }) {
-  return <div className={props.material ? 'available' : 'missing'}><small>{props.label}</small><strong>{props.material?.title ?? 'Not found in this course'}</strong>{props.material && <span>{props.material.pageCount} pages</span>}</div>
+  return <div className={props.material ? 'available' : 'missing'}><small>{props.label}</small><strong>{props.material?.title ?? 'Not found in this course'}</strong>{props.material && <span>{props.material.pageCount} {locationUnit(props.material.relativePath)}{props.material.pageCount === 1 ? '' : 's'}</span>}</div>
 }
 
 function MissingMaterial(props: { kind: 'lecture' | 'exercise' }) {
@@ -620,7 +627,50 @@ function MissingMaterial(props: { kind: 'lecture' | 'exercise' }) {
 }
 
 function LessonResult(props: { label: string; response: ExplainResponse; courseId: string; sourceAvailable: boolean }) {
-  return <article className="lesson-result"><div className="lesson-result-heading"><div><p className="eyebrow">{props.label}</p><h3>{props.response.question}</h3></div><span>{props.response.model}</span></div><div className="lesson-answer">{props.response.answer}</div><CourseVisuals citations={props.response.citations} courseId={props.courseId} sourceAvailable={props.sourceAvailable} /><CitationLinks citations={props.response.citations} courseId={props.courseId} sourceAvailable={props.sourceAvailable} /></article>
+  return <article className="lesson-result"><div className="lesson-result-heading"><div><p className="eyebrow">{props.label}</p><h3>{props.response.question}</h3></div><span>{props.response.model}</span></div><TypewriterAnswer key={props.response.answer} text={props.response.answer} /><CourseVisuals citations={props.response.citations} courseId={props.courseId} sourceAvailable={props.sourceAvailable} /><CitationLinks citations={props.response.citations} courseId={props.courseId} sourceAvailable={props.sourceAvailable} /></article>
+}
+
+function GenerationProgressPanel(props: { modelName: string; stage: GenerationStage }) {
+  const [elapsedMilliseconds, setElapsedMilliseconds] = useState(0)
+
+  useEffect(() => {
+    const startedAt = Date.now()
+    const timer = window.setInterval(() => setElapsedMilliseconds(Date.now() - startedAt), 250)
+    return () => window.clearInterval(timer)
+  }, [props.stage])
+
+  const progress = generationProgress(props.stage, elapsedMilliseconds)
+  const seconds = Math.floor(elapsedMilliseconds / 1000)
+  return <aside className="generation-progress" role="status" aria-live="polite">
+    <div className="generation-progress-heading"><div><p className="eyebrow">SOURCE-GROUNDED GENERATION</p><h2>{progress.title}</h2></div><span><i /> {seconds}s</span></div>
+    <div className="generation-progress-track"><i /></div>
+    <ol>{progress.steps.map((step) => <li className={step.state} key={step.label}><span>{step.state === 'done' ? '✓' : step.state === 'active' ? '●' : '○'}</span><strong>{step.label}</strong></li>)}</ol>
+    <p><strong>{props.modelName}</strong> is working from selected course evidence. This shows application stages, not private model chain-of-thought.{seconds >= 12 ? ' Local models can take longer; the request is still active.' : ''}</p>
+  </aside>
+}
+
+function TypewriterAnswer(props: { text: string }) {
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const [visibleLength, setVisibleLength] = useState(prefersReducedMotion ? props.text.length : 0)
+
+  useEffect(() => {
+    if (prefersReducedMotion) return
+    const charactersPerTick = Math.max(4, Math.ceil(props.text.length / 400))
+    const timer = window.setInterval(() => {
+      setVisibleLength((current) => {
+        const next = Math.min(props.text.length, current + charactersPerTick)
+        if (next >= props.text.length) window.clearInterval(timer)
+        return next
+      })
+    }, 20)
+    return () => window.clearInterval(timer)
+  }, [prefersReducedMotion, props.text])
+
+  const complete = visibleLength >= props.text.length
+  return <div className={`lesson-answer typewriter-answer ${complete ? 'complete' : ''}`} aria-label={props.text}>
+    <span aria-hidden="true">{props.text.slice(0, visibleLength)}</span>
+    {!complete && <><i aria-hidden="true" /><button onClick={() => setVisibleLength(props.text.length)} type="button">Show complete answer</button></>}
+  </div>
 }
 
 function InlineGrade(props: { grade: GradeResponse; courseId: string; sourceAvailable: boolean }) {
@@ -675,11 +725,17 @@ function CourseImportDialog(props: CourseImportDialogProps) {
 
   function chooseFiles(selected: FileList | null, kind: 'files' | 'folder') {
     const selectedFiles = Array.from(selected ?? [])
-    const supportedFiles = selectedFiles.filter((file) => /\.(pdf|md|txt)$/i.test(file.name))
+    const supportedFiles = selectedFiles.filter((file) => {
+      const relativePath = (file.webkitRelativePath || file.name).replaceAll('\\', '/')
+      return /\.(pdf|pptx|md|txt)$/i.test(file.name)
+        && !file.name.startsWith('._')
+        && !file.name.startsWith('~$')
+        && !relativePath.includes('/__MACOSX/')
+    })
     setFiles(supportedFiles)
     setSkippedFileCount(selectedFiles.length - supportedFiles.length)
     setImportError(supportedFiles.length === 0 && selectedFiles.length > 0
-      ? 'This selection contains no supported PDF, Markdown, or text files.'
+      ? 'This selection contains no supported PDF, PowerPoint, Markdown, or text files.'
       : '')
     setSelectionKind(kind)
   }
@@ -687,7 +743,7 @@ function CourseImportDialog(props: CourseImportDialogProps) {
   const totalMegabytes = files.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024
   const firstPath = files[0]?.webkitRelativePath || files[0]?.name
 
-  return <div className="course-import-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !props.importing) props.onClose() }}><section aria-labelledby="course-import-title" aria-modal="true" className="course-import-dialog" role="dialog"><header><div><p className="eyebrow">BUILD A COURSE LEARNING PATH</p><h2 id="course-import-title">Add course material</h2><span>Select individual files or one complete course folder. Folder structure helps identify lectures, exercises, and solutions.</span></div><button aria-label="Close course import" className="detail-close" disabled={props.importing} onClick={props.onClose}>×</button></header><form onSubmit={(event) => { void submitImport(event) }}><label className="course-name-field"><span>Course name</span><input autoFocus maxLength={100} minLength={2} placeholder="e.g. Database Systems" required value={courseName} onChange={(event) => setCourseName(event.target.value)} /></label><div className="import-choice-grid"><label className="course-file-drop"><strong>Choose files</strong><span>Select several PDF, Markdown, or text files</span><input accept=".pdf,.md,.txt,application/pdf,text/markdown,text/plain" multiple type="file" onChange={(event) => chooseFiles(event.target.files, 'files')} /></label><label className="course-file-drop folder-drop"><strong>Choose a folder</strong><span>Best for Lecture / Exercise / Solution folders</span><input accept=".pdf,.md,.txt" ref={(element) => { if (element) element.setAttribute('webkitdirectory', '') }} multiple type="file" onChange={(event) => chooseFiles(event.target.files, 'folder')} /></label></div>{files.length > 0 && <div className="course-file-summary"><strong>{selectionKind === 'folder' ? 'Folder selected' : 'Files selected'} · {files.length} file{files.length === 1 ? '' : 's'} · {totalMegabytes.toFixed(1)} MB</strong><span>{firstPath}{files.length > 1 ? ` · +${files.length - 1} more` : ''}</span></div>}{skippedFileCount > 0 && <div className="course-import-note">Skipped {skippedFileCount} unsupported file{skippedFileCount === 1 ? '' : 's'}; only PDF, Markdown, and text are imported.</div>}<div className="folder-tip"><strong>Recommended structure</strong><code>My Course / Lecture / Exercise / Solution</code></div><div className="course-import-privacy"><span>⌂</span><p><strong>Your files stay on this computer.</strong>They are copied into StudyLens and indexed locally. A cloud model receives only selected passages when you use it.</p></div>{importError && <div className="course-import-error" role="alert">{importError}</div>}<div className="course-import-actions"><button disabled={props.importing} onClick={props.onClose} type="button">Cancel</button><button className="import-action" disabled={props.importing || courseName.trim().length < 2 || files.length === 0} type="submit">{props.importing ? 'Building learning path…' : 'Import course'}</button></div></form></section></div>
+  return <div className="course-import-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !props.importing) props.onClose() }}><section aria-labelledby="course-import-title" aria-modal="true" className="course-import-dialog" role="dialog"><header><div><p className="eyebrow">BUILD A COURSE LEARNING PATH</p><h2 id="course-import-title">Add course material</h2><span>Select individual files or one complete course folder. Folder structure helps identify lectures, exercises, and solutions.</span></div><button aria-label="Close course import" className="detail-close" disabled={props.importing} onClick={props.onClose}>×</button></header><form onSubmit={(event) => { void submitImport(event) }}><label className="course-name-field"><span>Course name</span><input autoFocus maxLength={100} minLength={2} placeholder="e.g. Database Systems" required value={courseName} onChange={(event) => setCourseName(event.target.value)} /></label><div className="import-choice-grid"><label className="course-file-drop"><strong>Choose files</strong><span>Select PDF, PowerPoint, Markdown, or text files</span><input accept=".pdf,.pptx,.md,.txt,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/markdown,text/plain" multiple type="file" onChange={(event) => chooseFiles(event.target.files, 'files')} /></label><label className="course-file-drop folder-drop"><strong>Choose a folder</strong><span>Best for Lecture / Exercise / Solution folders</span><input accept=".pdf,.pptx,.md,.txt" ref={(element) => { if (element) element.setAttribute('webkitdirectory', '') }} multiple type="file" onChange={(event) => chooseFiles(event.target.files, 'folder')} /></label></div>{files.length > 0 && <div className="course-file-summary"><strong>{selectionKind === 'folder' ? 'Folder selected' : 'Files selected'} · {files.length} file{files.length === 1 ? '' : 's'} · {totalMegabytes.toFixed(1)} MB</strong><span>{firstPath}{files.length > 1 ? ` · +${files.length - 1} more` : ''}</span></div>}{skippedFileCount > 0 && <div className="course-import-note">Skipped {skippedFileCount} unsupported file{skippedFileCount === 1 ? '' : 's'}; PDF, PowerPoint, Markdown, and text are imported.</div>}<div className="folder-tip"><strong>Recommended structure</strong><code>My Course / Lecture / Exercise / Solution</code></div><div className="course-import-privacy"><span>⌂</span><p><strong>Your files stay on this computer.</strong>They are copied into StudyLens and indexed locally. A cloud model receives only selected passages when you use it.</p></div>{importError && <div className="course-import-error" role="alert">{importError}</div>}<div className="course-import-actions"><button disabled={props.importing} onClick={props.onClose} type="button">Cancel</button><button className="import-action" disabled={props.importing || courseName.trim().length < 2 || files.length === 0} type="submit">{props.importing ? 'Building learning path…' : 'Import course'}</button></div></form></section></div>
 }
 
 function ModelSetupDialog(props: { model: AiStatus; onClose: () => void }) {
@@ -703,7 +759,7 @@ function ModelSetupDialog(props: { model: AiStatus; onClose: () => void }) {
 }
 
 function CitationLinks(props: { citations: TutorCitation[]; courseId: string; sourceAvailable: boolean }) {
-  return <div className="citation-list"><strong>Course pages used</strong>{props.citations.map((citation) => props.sourceAvailable ? <a key={citation.chunkId} href={documentUrl(props.courseId, citation.documentId, citation.page)} target="_blank" rel="noreferrer">[{citation.number}] {citation.title}, p. {citation.page}</a> : <span key={citation.chunkId}>[{citation.number}] {citation.title}, p. {citation.page}</span>)}</div>
+  return <div className="citation-list"><strong>Course sources used</strong>{props.citations.map((citation) => { const location = `${locationUnit(citation.relativePath)} ${citation.page}`; return props.sourceAvailable ? <a key={citation.chunkId} href={documentUrl(props.courseId, citation.documentId, citation.page, citation.relativePath)} target="_blank" rel="noreferrer">[{citation.number}] {citation.title}, {location}</a> : <span key={citation.chunkId}>[{citation.number}] {citation.title}, {location}</span> })}</div>
 }
 
 function CourseVisuals(props: { citations: TutorCitation[]; courseId: string; sourceAvailable: boolean }) {
@@ -723,8 +779,9 @@ function CourseVisuals(props: { citations: TutorCitation[]; courseId: string; so
   })}</div></section>
 }
 
-function documentUrl(courseId: string, documentId: string, page: number) {
-  return `/api/courses/${encodeURIComponent(courseId)}/documents/${encodeURIComponent(documentId)}#page=${page}`
+function documentUrl(courseId: string, documentId: string, page: number, relativePath = '.pdf') {
+  const base = `/api/courses/${encodeURIComponent(courseId)}/documents/${encodeURIComponent(documentId)}`
+  return relativePath.toLowerCase().endsWith('.pdf') ? `${base}#page=${page}` : base
 }
 
 function pagePreviewUrl(courseId: string, documentId: string, page: number) {
@@ -733,6 +790,14 @@ function pagePreviewUrl(courseId: string, documentId: string, page: number) {
 
 function displayPath(value: string) {
   return value.replaceAll('/', ' › ')
+}
+
+function courseInitials(value: string) {
+  return value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
+}
+
+function locationUnit(relativePath: string) {
+  return relativePath.toLowerCase().endsWith('.pptx') ? 'slide' : 'page'
 }
 
 function formatDate(value: string) {

@@ -7,7 +7,7 @@ namespace StudyLens.Api.Data;
 public sealed class CourseCorpus
 {
     private static readonly HashSet<string> SupportedDocumentExtensions = new(
-        [".pdf", ".md", ".txt"],
+        [".pdf", ".pptx", ".md", ".txt"],
         StringComparer.OrdinalIgnoreCase);
 
     private CourseCorpus(string courseId, CourseIndex? index, string? sourceRoot, string? error)

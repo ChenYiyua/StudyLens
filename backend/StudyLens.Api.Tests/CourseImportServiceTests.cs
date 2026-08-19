@@ -113,6 +113,7 @@ public sealed class CourseImportServiceTests
                 new CourseSearchService(catalog));
             await using var lectureContent = new MemoryStream("Grounded lecture evidence."u8.ToArray());
             await using var imageContent = new MemoryStream([1, 2, 3]);
+            await using var sidecarContent = new MemoryStream([0, 5, 22, 7]);
             IFormFile lecture = new FormFile(
                 lectureContent,
                 0,
@@ -125,11 +126,17 @@ public sealed class CourseImportServiceTests
                 imageContent.Length,
                 "files",
                 "cover.png");
+            IFormFile sidecar = new FormFile(
+                sidecarContent,
+                0,
+                sidecarContent.Length,
+                "files",
+                "._lecture.pdf");
 
             var status = await service.ImportAsync(
                 "Mixed Course",
-                [lecture, image],
-                ["Mixed Course/Lecture/lecture.md", "Mixed Course/cover.png"],
+                [lecture, image, sidecar],
+                ["Mixed Course/Lecture/lecture.md", "Mixed Course/cover.png", "__MACOSX/._lecture.pdf"],
                 CancellationToken.None);
 
             Assert.True(status.Ready);
@@ -150,6 +157,13 @@ public sealed class CourseImportServiceTests
                 "source",
                 "Mixed Course",
                 "cover.png")));
+            Assert.False(File.Exists(Path.Combine(
+                root,
+                "imports",
+                status.CourseId,
+                "source",
+                "__MACOSX",
+                "._lecture.pdf")));
         }
         finally
         {

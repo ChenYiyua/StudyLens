@@ -8,6 +8,7 @@ export interface CourseStatus {
   pageCount: number
   emptyPageCount: number
   chunkCount: number
+  skippedDocumentCount: number
   materialTypes: Record<string, number>
   message: string | null
 }

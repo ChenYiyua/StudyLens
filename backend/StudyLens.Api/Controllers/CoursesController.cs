@@ -112,6 +112,7 @@ public sealed class CoursesController(
         var contentType = Path.GetExtension(documentPath).ToLowerInvariant() switch
         {
             ".pdf" => "application/pdf",
+            ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             ".md" => "text/markdown; charset=utf-8",
             ".txt" => "text/plain; charset=utf-8",
             _ => "application/octet-stream",

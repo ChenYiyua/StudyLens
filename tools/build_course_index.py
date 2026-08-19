@@ -21,7 +21,7 @@ COURSE_ID = "tum-inhn0017-eam"
 COURSE_NAME = "Enterprise Architecture Management and Reference Models"
 WORD_PATTERN = re.compile(r"\S+")
 WHITESPACE_PATTERN = re.compile(r"\s+")
-SUPPORTED_SUFFIXES = {".pdf", ".md", ".txt"}
+SUPPORTED_SUFFIXES = {".pdf", ".pptx", ".md", ".txt"}
 
 
 @dataclass(frozen=True)
@@ -64,20 +64,42 @@ def parse_args() -> argparse.Namespace:
 
 
 def classify_material(relative_path: Path) -> str:
-    name = relative_path.name.lower()
-    path = relative_path.as_posix().lower()
+    name = relative_path.stem.casefold()
+    path = relative_path.as_posix().casefold()
+    searchable_name = re.sub(r"[_\-.]+", " ", name)
+    searchable_path = re.sub(r"[_\-.\\/]+", " ", path)
+    compact_path = re.sub(r"[^\w]+", "", path)
 
-    if "revision_notes" in name:
+    if "revisionnotes" in compact_path or "examnotes" in compact_path or any(
+        keyword in searchable_path
+        for keyword in ("revision note", "exam note", "cheat sheet", "cheatsheet", "复习", "总结")
+    ):
         return "revision-note"
-    if "mockexam" in name or "final" in name or "skill check" in name:
-        return "exam"
-    if "solution" in name:
+    if any(
+        keyword in searchable_path
+        for keyword in ("solution", "solutions", "answer key", "model answer", "loesung", "lösung", "答案", "解答")
+    ):
         return "solution"
-    if "/exercise/" in f"/{path}" or "/exercises/" in f"/{path}":
+    if any(keyword in compact_path for keyword in ("mockexam", "modelexam", "finalexam", "shorttest")) or any(
+        keyword in searchable_path
+        for keyword in ("mock exam", "model exam", "final exam", "retake", "skillcheck", "skill check", "short test", "klausur", "prüfung", "pruefung", "考试", "试卷")
+    ) or re.search(r"(?:^|\s)exam(?:\s|$)", searchable_path):
+        return "exam"
+    if any(
+        keyword in searchable_path
+        for keyword in ("exercise", "exercises", "assignment", "assignments", "problem set", "worksheet", "homework", "tutorial", "tutorials", "uebung", "übung", "ubung", "aufgabe", "tutorium", "作业", "习题", "练习")
+    ):
         return "exercise"
-    if name.startswith("h") and re.match(r"h\d+", name):
+    if re.search(r"(?:^|\s)(?:ex|hw|h)\s*\d+", searchable_name):
         return "exercise"
-    if "/lecture/" in f"/{path}" or name.startswith("l"):
+    if any(
+        keyword in searchable_path
+        for keyword in ("lecture", "lectures", "lecture slides", "chapter", "chapters", "vorlesung", "folien", "skript", "课件", "讲义")
+    ):
+        return "lecture"
+    if re.search(r"(?:^|\s)(?:lec|lecture|l)\s*\d+", searchable_name):
+        return "lecture"
+    if re.match(r"^\d+[a-z]?\s+", searchable_name):
         return "lecture"
     if "case" in name or "archihotel" in name or "studyproject" in name or "c2f1g2" in path:
         return "case-study"
@@ -113,6 +135,15 @@ def extract_pages(material_path: Path) -> list[str]:
     """Return page-like text units while keeping PDF page numbers auditable."""
     if material_path.suffix.lower() == ".pdf":
         return [page.extract_text() or "" for page in PdfReader(str(material_path)).pages]
+    if material_path.suffix.lower() == ".pptx":
+        from pptx import Presentation
+
+        presentation = Presentation(str(material_path))
+        slides: list[str] = []
+        for slide in presentation.slides:
+            slide_text = [getattr(shape, "text", "") for shape in slide.shapes]
+            slides.append("\n".join(text for text in slide_text if text))
+        return slides
 
     # Form-feed is a portable explicit page boundary for plain-text fixtures.
     return material_path.read_text(encoding="utf-8").split("\f")
@@ -131,7 +162,14 @@ def build_index(
         raise ValueError("chunk-words must be greater than overlap-words")
 
     material_paths = sorted(
-        (path for path in source.rglob("*") if path.suffix.lower() in SUPPORTED_SUFFIXES),
+        (
+            path
+            for path in source.rglob("*")
+            if path.suffix.lower() in SUPPORTED_SUFFIXES
+            and not path.name.startswith("._")
+            and "__MACOSX" not in path.parts
+            and not path.name.startswith("~$")
+        ),
         key=lambda path: path.as_posix().lower(),
     )
     if not material_paths:
@@ -141,13 +179,23 @@ def build_index(
     documents: list[dict[str, object]] = []
     total_pages = 0
     empty_pages = 0
+    skipped_documents: list[dict[str, str]] = []
 
     for material_path in material_paths:
         relative_path = material_path.relative_to(source)
         portable_path = relative_path.as_posix()
         document_id = stable_id(portable_path.lower())
         material_type = classify_material(relative_path)
-        pages = extract_pages(material_path)
+        try:
+            pages = extract_pages(material_path)
+        except Exception as exception:
+            skipped_documents.append(
+                {
+                    "relativePath": portable_path,
+                    "message": f"{type(exception).__name__}: {exception}",
+                }
+            )
+            continue
         document_chunks = 0
 
         for page_number, raw_text in enumerate(pages, start=1):
@@ -193,9 +241,11 @@ def build_index(
             "pageCount": total_pages,
             "emptyPageCount": empty_pages,
             "chunkCount": len(chunks),
+            "skippedDocumentCount": len(skipped_documents),
         },
         "documents": documents,
         "chunks": [chunk_to_json(chunk) for chunk in chunks],
+        "warnings": skipped_documents,
     }
 
 
@@ -221,6 +271,8 @@ def main() -> None:
         f"{stats['chunkCount']} searchable chunks."
     )
     print(f"Skipped {stats['emptyPageCount']} pages without extractable text.")
+    if stats["skippedDocumentCount"]:
+        print(f"Skipped {stats['skippedDocumentCount']} unreadable documents.")
     print(f"Output: {args.output.resolve()}")
 
 

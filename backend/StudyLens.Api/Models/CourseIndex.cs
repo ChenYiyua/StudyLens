@@ -14,7 +14,8 @@ public sealed record CourseStatistics(
     int DocumentCount,
     int PageCount,
     int EmptyPageCount,
-    int ChunkCount);
+    int ChunkCount,
+    int SkippedDocumentCount = 0);
 
 public sealed record CourseDocument(
     string Id,
