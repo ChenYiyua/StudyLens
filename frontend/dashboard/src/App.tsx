@@ -375,6 +375,8 @@ function App() {
     }
   }
 
+  const selectedModelName = selectedModel ? modelDisplayName(selectedModel) : 'AI teacher'
+
   return <>
     {launchPhase !== 'hidden' && <LaunchSequence phase={launchPhase} onSkip={() => setLaunchPhase('leaving')} />}
     <AmbientBackground />
@@ -403,7 +405,7 @@ function App() {
         <div className="model-card">
           <p>AI TEACHER</p>
           <select aria-label="Select AI model" value={modelId} onChange={(event) => selectModel(event.target.value)}>
-            {aiCatalog?.models.map((model) => <option key={model.id} value={model.id}>{model.displayName}{model.available ? '' : ' · connect first'}</option>)}
+            {aiCatalog?.models.map((model) => <option key={model.id} value={model.id}>{modelDisplayName(model)}{model.available ? '' : ' · connect first'}</option>)}
           </select>
           <div className={`model-state ${selectedModel?.available ? 'ready' : ''}`}><i /><span>{selectedModel?.message ?? 'Checking available models…'}</span></div>
           {!selectedModel?.available && <button className="model-setup-button" onClick={() => setModelSetupOpen(true)}>How to connect</button>}
@@ -419,8 +421,8 @@ function App() {
         </header>
 
         {error && <div className="error-banner" role="alert">{error}</div>}
-        {selectedModel && !selectedModel.available && <div className="model-warning"><strong>{selectedModel.displayName} is not connected yet.</strong><span>You can select it now, but connect its API or local runtime before starting a lesson.</span><button onClick={() => setModelSetupOpen(true)}>Show setup</button></div>}
-        {workingStage && workingStage !== 'course' && <GenerationProgressPanel key={workingStage} modelName={selectedModel?.displayName ?? 'AI teacher'} stage={workingStage} />}
+        {selectedModel && !selectedModel.available && <div className="model-warning"><strong>{selectedModelName} is not connected yet.</strong><span>You can select it now, but connect its API or local runtime before starting a lesson.</span><button onClick={() => setModelSetupOpen(true)}>Show setup</button></div>}
+        {workingStage && workingStage !== 'course' && <GenerationProgressPanel key={workingStage} modelName={selectedModelName} stage={workingStage} />}
         {mode === 'study' && extensionContext && <ExtensionContextPanel
           aiReady={selectedModel?.available === true}
           context={extensionContext}
@@ -441,7 +443,7 @@ function App() {
           grade={grade}
           lectureExplanation={lectureExplanation}
           lectureMaterials={lectureMaterials}
-          modelName={selectedModel?.displayName ?? 'AI teacher'}
+          modelName={selectedModelName}
           practice={practice}
           selectedExercise={selectedExercise}
           selectedExerciseId={selectedExerciseId}
@@ -755,7 +757,7 @@ function ModelSetupDialog(props: { model: AiStatus; onClose: () => void }) {
       ? 'powershell -ExecutionPolicy Bypass -File scripts\\setup-cloud-ai.ps1 -Provider OpenAI'
       : 'powershell -ExecutionPolicy Bypass -File scripts\\setup-local-ai.ps1'
   const keyUrl = isGemini ? 'https://aistudio.google.com/app/apikey' : isOpenAi ? 'https://platform.openai.com/api-keys' : null
-  return <div className="course-import-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) props.onClose() }}><section aria-labelledby="model-setup-title" aria-modal="true" className="model-setup-dialog" role="dialog"><header><div><p className="eyebrow">CONNECT AI TEACHER</p><h2 id="model-setup-title">{props.model.displayName}</h2><span>{props.model.message}</span></div><button aria-label="Close model setup" className="detail-close" onClick={props.onClose}>×</button></header><div className="model-setup-body"><ol>{keyUrl && <li><strong>Create an API key</strong><span>The provider—not ChatGPT Plus or Gemini Advanced—issues the developer API key.</span><a href={keyUrl} target="_blank" rel="noreferrer">Open provider key page ↗</a></li>}<li><strong>Save it without putting it in the repository</strong><span>Run this command from the StudyLens project folder. Your typed key is hidden.</span><code>{command}</code></li><li><strong>Restart StudyLens</strong><span>The model becomes ready in this selector after the backend restarts.</span></li></ol><button className="journey-action" onClick={props.onClose}>Got it</button></div></section></div>
+  return <div className="course-import-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) props.onClose() }}><section aria-labelledby="model-setup-title" aria-modal="true" className="model-setup-dialog" role="dialog"><header><div><p className="eyebrow">CONNECT AI TEACHER</p><h2 id="model-setup-title">{modelDisplayName(props.model)}</h2><span>{props.model.message}</span></div><button aria-label="Close model setup" className="detail-close" onClick={props.onClose}>×</button></header><div className="model-setup-body"><ol>{keyUrl && <li><strong>Create an API key</strong><span>The provider—not ChatGPT Plus or Gemini Advanced—issues the developer API key.</span><a href={keyUrl} target="_blank" rel="noreferrer">Open provider key page ↗</a></li>}<li><strong>Save it without putting it in the repository</strong><span>Run this command from the StudyLens project folder. Your typed key is hidden.</span><code>{command}</code></li><li><strong>Restart StudyLens</strong><span>The model becomes ready in this selector after the backend restarts.</span></li></ol><button className="journey-action" onClick={props.onClose}>Got it</button></div></section></div>
 }
 
 function CitationLinks(props: { citations: TutorCitation[]; courseId: string; sourceAvailable: boolean }) {
@@ -794,6 +796,12 @@ function displayPath(value: string) {
 
 function courseInitials(value: string) {
   return value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
+}
+
+function modelDisplayName(model: AiStatus) {
+  return model.local && model.provider.toLowerCase() === 'ollama'
+    ? `Qwen local · ${model.model}`
+    : model.displayName
 }
 
 function locationUnit(relativePath: string) {
