@@ -23,11 +23,16 @@ A clean clone includes a small original demo course and retrieval benchmark. The
   </tr>
 </table>
 
-The screenshots are from a verified clean-clone run using the public demo course and local `qwen3.5:9b`. Private course files and extracted text are excluded from Git.
+<p align="center">
+  <img src="docs/images/studylens-past-feedback.png" alt="MongoDB-backed Past feedback history reopened in a fresh browser session" width="100%" />
+</p>
+<p align="center"><strong>Persistent Past feedback</strong><br/>A fresh browser session reloaded the saved 10/10 attempt, full formative report, model provenance, and course-source links from MongoDB.</p>
+
+The screenshots are from a verified clean-clone run using the public demo course and local `qwen3.5:9b`. The Past feedback view was tested after opening a new browser session, confirming that the saved attempt survives beyond in-memory UI state. Private course files and extracted text are excluded from Git.
 
 ### Validated local runtime
 
-The current reference machine has 16 GB RAM and an RTX 3060 Laptop GPU with 6 GB VRAM. Ollama loads `qwen3.5:9b` across 57% GPU / 43% CPU with a 4,096-token context. In the captured end-to-end run, the model produced the 3,828-character lecture in about 232 seconds, three structured questions in about 40 seconds, and grounded grading in about 47 seconds. Timings vary with thermals and other system load.
+The current reference machine has 16 GB RAM and an RTX 3060 Laptop GPU with 6 GB VRAM. Ollama loads `qwen3.5:9b` across 57% GPU / 43% CPU with a 4,096-token context. In the captured end-to-end run, the model produced the 3,828-character lecture in about 232 seconds, three structured questions in about 40 seconds, and grounded grading in about 47 seconds. The resulting attempt was then reloaded from MongoDB in a fresh browser session through Past feedback. Timings vary with thermals and other system load.
 
 ## Product workflow
 
