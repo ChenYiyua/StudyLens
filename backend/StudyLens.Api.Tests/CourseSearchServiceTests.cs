@@ -76,6 +76,29 @@ public sealed class CourseSearchServiceTests
     }
 
     [Fact]
+    public void LearningPath_PairsDifferentCommonExerciseAndSolutionPrefixes()
+    {
+        var index = CreateIndex() with
+        {
+            Statistics = new CourseStatistics(4, 34, 0, 4),
+            Documents = [
+                new CourseDocument("lecture", "Lecture 1", "Lectures/Lecture 1.pdf", "lecture", 2, 1),
+                new CourseDocument("exercise", "Exercise Sheet 01", "Exercises/Exercise Sheet 01.pdf", "exercise", 2, 1),
+                new CourseDocument("solution", "Homework Solution 01", "Solutions/Homework Solution 01.pdf", "solution", 2, 1),
+                new CourseDocument("exam", "Mock Exam", "Mock Exam.pdf", "exam", 2, 1),
+            ],
+        };
+        var service = new CourseSearchService(CourseCatalog.FromCorpora(
+            "test-course",
+            CourseCorpus.FromIndex(index)));
+
+        var unit = Assert.Single(service.GetLearningPath("test-course").Exercises);
+
+        Assert.Equal("Exercise Sheet 01", unit.Exercise?.Title);
+        Assert.Equal("Homework Solution 01", unit.Solution?.Title);
+    }
+
+    [Fact]
     public void DocumentEvidence_IsScopedToSelectedDocument()
     {
         var service = new CourseSearchService(CourseCatalog.FromCorpora(

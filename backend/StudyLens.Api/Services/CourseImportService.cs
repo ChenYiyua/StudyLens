@@ -12,7 +12,7 @@ public sealed partial class CourseImportService(
     CourseSearchService searchService)
 {
     private static readonly HashSet<string> SupportedExtensions = new(
-        [".pdf", ".md", ".txt"],
+        [".pdf", ".pptx", ".md", ".txt"],
         StringComparer.OrdinalIgnoreCase);
 
     private readonly CourseImportOptions settings = options.Value;
@@ -45,12 +45,13 @@ public sealed partial class CourseImportService(
                 file,
                 relativePaths is { Count: > 0 } ? relativePaths[index] : file.FileName))
             .Where(candidate => SupportedExtensions.Contains(
-                Path.GetExtension(candidate.OriginalPath.Replace('\\', '/'))))
+                Path.GetExtension(candidate.OriginalPath.Replace('\\', '/'))) &&
+                !IsSystemMetadata(candidate.OriginalPath))
             .ToArray();
         if (supportedFiles.Length == 0)
         {
             throw new InvalidDataException(
-                "Unsupported files were skipped, but no PDF, Markdown, or text files remain.");
+                "Unsupported files were skipped, but no PDF, PowerPoint, Markdown, or text files remain.");
         }
 
         var safeRelativePaths = supportedFiles
@@ -179,6 +180,16 @@ public sealed partial class CourseImportService(
         }
 
         return Path.Combine(cleanedSegments);
+    }
+
+    private static bool IsSystemMetadata(string originalPath)
+    {
+        var portablePath = originalPath.Replace('\\', '/');
+        var fileName = Path.GetFileName(portablePath);
+        return fileName.StartsWith("._", StringComparison.Ordinal) ||
+            fileName.StartsWith("~$", StringComparison.Ordinal) ||
+            portablePath.Split('/', StringSplitOptions.RemoveEmptyEntries)
+                .Any(segment => segment.Equals("__MACOSX", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string CreateUniqueDestination(string sourceRoot, string relativePath)

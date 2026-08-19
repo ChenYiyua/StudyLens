@@ -35,7 +35,7 @@ $pythonLauncher = Get-Command py -ErrorAction SilentlyContinue
 if (-not $pythonLauncher) {
     throw 'Python Launcher was not found. Install Python 3.12 and try again.'
 }
-& $pythonLauncher.Source -3.12 -c 'import pypdf; import pypdfium2; import PIL' 2>$null
+& $pythonLauncher.Source -3.12 -c 'import pypdf; import pypdfium2; import PIL; import pptx' 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host 'Installing the local PDF indexing and page-preview tools...' -ForegroundColor Yellow
     & $pythonLauncher.Source -3.12 -m pip install -r $requirementsPath

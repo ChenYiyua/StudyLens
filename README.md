@@ -4,7 +4,7 @@
 ![ASP.NET Core](https://img.shields.io/badge/ASP.NET_Core-C%23-5d65d8?logo=dotnet&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-NoSQL-19a974?logo=mongodb&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-Ingestion-2877c7?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-45_passing-16885f)
+![Tests](https://img.shields.io/badge/tests-51_passing-16885f)
 
 StudyLens is a multi-course, source-grounded AI learning companion for real study material. Its primary workflow teaches a selected lecture, explains the course's own exercise and solution, then generates a knowledge check and grades the student's answer against the same source.
 
@@ -17,11 +17,16 @@ A clean clone includes a small original demo course and retrieval benchmark. The
   </tr>
   <tr>
     <td align="center"><strong>System-aware launch sequence</strong><br/>A brief, skippable initialization view establishes the workspace and visualizes the course, evidence, and AI layers.</td>
-    <td align="center"><strong>Focused learning workspace</strong><br/>A warm editorial enterprise interface leads students through lecture, exercise, and knowledge-check stages.</td>
+    <td align="center"><strong>Focused learning workspace</strong><br/>A luminous blue enterprise interface leads students through lecture, exercise, and knowledge-check stages.</td>
   </tr>
 </table>
 
-The interface uses restrained pointer-responsive depth, staged workspace reveals, and state-aware micro-interactions. The launch sequence completes automatically in about three seconds, can be skipped immediately, locks the inactive workspace against accidental input, and is disabled when the operating system requests reduced motion.
+The interface uses a consistent blue-violet visual system, restrained pointer-responsive depth, staged workspace reveals, and state-aware micro-interactions. The launch sequence completes automatically in about three seconds, can be skipped immediately, locks the inactive workspace against accidental input, and is disabled when the operating system requests reduced motion.
+
+<p align="center">
+  <img src="docs/images/studylens-generation-progress.png" alt="StudyLens showing source-grounded generation stages for an imported BPM course" width="100%" />
+</p>
+<p align="center"><strong>Transparent long-running generation</strong><br/>The workspace reports the real application pipeline and elapsed time while a local model works, then reveals the finished answer with a skippable typewriter effect. It does not claim to expose private model chain-of-thought.</p>
 
 <table>
   <tr>
@@ -50,11 +55,26 @@ The interface uses restrained pointer-responsive depth, staged workspace reveals
   </tr>
 </table>
 
-The AI tutor screenshots are from a verified clean-clone run using the public demo course and local `qwen3.5:9b`. The Past feedback view was tested after opening a new browser session, confirming that the saved attempt survives beyond in-memory UI state. The extension handoff screenshots use the local EAM reference deployment. Private course files and extracted text are excluded from Git.
+The lesson and assessment screenshots are from a verified clean-clone run using the public demo course and local `qwen3.5:9b`. The course workspace and generation-progress views were re-captured from a real imported BPM folder after the cross-course compatibility pass. The Past feedback view was tested after opening a new browser session, confirming that the saved attempt survives beyond in-memory UI state. The extension handoff screenshots use the local EAM reference deployment. All screenshots use the same blue-violet product theme; private course files and extracted text are excluded from Git.
 
 ### Validated local runtime
 
 The current reference machine has 16 GB RAM and an RTX 3060 Laptop GPU with 6 GB VRAM. Ollama loads `qwen3.5:9b` across 57% GPU / 43% CPU with a 4,096-token context. In the captured end-to-end run, the model produced the 3,828-character lecture in about 232 seconds, three structured questions in about 40 seconds, and grounded grading in about 47 seconds. The resulting attempt was then reloaded from MongoDB in a fresh browser session through Past feedback. Timings vary with thermals and other system load.
+
+### Cross-course compatibility evidence
+
+The ingestion pipeline was exercised against six unrelated local course folders rather than only the original EAM corpus. The folders included flat and nested layouts, English/German/Chinese path names, lecture decks, exercise sheets, solutions, mock exams, macOS metadata, and one unreadable PDF. All six produced a usable learning path after the compatibility pass:
+
+| Course-family sample | Indexed documents | Pages/slides | Result |
+|---|---:|---:|---|
+| Business Process Management | 23 | 531 | 8 lectures, 10 exercise units; full HTTP import, search, and local-AI lecture smoke test passed |
+| Discrete Probability Theory | 81 | 3,228 | indexed; sidecar metadata ignored |
+| Embedded Systems | 49 | 777 | indexed with lectures, exercises, solutions, exam, and revision material |
+| Linear Algebra | 46 | 276 | indexed from mixed PDF/DOCX folder; unsupported DOCX skipped |
+| Microeconomics | 44 | 1,225 | indexed; 44 macOS AppleDouble PDF lookalikes ignored |
+| Signal Processing | 41 | 538 | indexed with multilingual folder names |
+
+This is compatibility evidence, not a claim that every possible university file will work. The current browser importer accepts PDF, PPTX, Markdown, and plain text, with limits of 100 accepted files, 50 MB per file, and 250 MB per course. Scanned image-only PDFs still need OCR, and DOCX is intentionally skipped.
 
 ## Product workflow
 
@@ -83,12 +103,15 @@ This is more than a PDF chatbot:
 
 ## Implemented features
 
-- file or whole-folder course import that preserves the Lecture/Exercise/Solution structure and skips unsupported files without rejecting the valid remainder;
-- PDF, Markdown, and text ingestion with deterministic overlapping chunks;
+- file or whole-folder course import that preserves internal paths, ignores macOS/Office sidecars, and skips unsupported or unreadable files without rejecting the valid remainder;
+- visible, scrollable course library for switching among multiple indexed subjects without rebuilding the application;
+- PDF, PowerPoint, Markdown, and text ingestion with deterministic overlapping chunks;
+- multilingual material classification for common English, German, and Chinese lecture/exercise/solution/exam naming patterns;
 - BM25-style lexical retrieval and lecture/exercise/solution/exam filters;
 - safe links back to the original local material page;
 - inline PNG previews of cited PDF pages, generated and cached locally;
 - document-scoped lecture teaching with page citations, examples, and exam-ready English wording;
+- elapsed-time and pipeline-stage feedback during long model calls, followed by a reduced-motion-aware, skippable typewriter reveal;
 - automatic pairing and walkthrough of course-provided exercises and solutions;
 - course-grounded knowledge-check generation and formative grading;
 - MongoDB-backed attempt history, aggregate score, reload, and user-controlled deletion;
@@ -121,7 +144,7 @@ powershell -ExecutionPolicy Bypass -File scripts\run-local.ps1
 
 Open `http://127.0.0.1:5080`. A clean clone starts with the committed **AI-Assisted Learning Demo** course. Keep the terminal open and press `Ctrl+C` to stop.
 
-Use **Add files or folder** in the sidebar to import individual PDF, Markdown, or text files, or select an entire course folder. The browser preserves its internal paths. Folders named `Lecture`, `Exercise`, and `Solution` let StudyLens build the learning sequence and pair sheets with their answers automatically. The copied files and index stay under the ignored local `App_Data/imported-courses` folder and are rediscovered after a restart.
+Use **Add files or folder** in the sidebar to import individual PDF, PowerPoint, Markdown, or text files, or select an entire course folder. The browser preserves its internal paths. Common English, German, and Chinese lecture/exercise/solution names help StudyLens build the learning sequence and pair sheets with their answers automatically. Unsupported files and system metadata are reported and skipped without blocking valid material. The copied files and index stay under the ignored local `App_Data/imported-courses` folder and are rediscovered after a restart.
 
 The default model is local Qwen through Ollama. Every local and cloud profile is selectable. An unconfigured profile opens provider-specific connection guidance; teaching actions remain unavailable until its runtime or API key is ready:
 
@@ -203,7 +226,7 @@ A compound index on `(courseId, createdAtUtc descending)` supports course histor
 powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
 ```
 
-The current suite runs 5 Python indexing/rendering tests, 34 C# tests, and 6 TypeScript selection/handoff-contract tests, plus .NET formatting verification and lint/production builds for both React applications. CI deliberately uses fake AI providers and does not download multi-gigabyte model weights.
+The current suite runs 8 Python indexing/rendering tests, 35 C# API/service tests, 4 Dashboard TypeScript tests, and 4 extension TypeScript tests: 51 automated tests in total. It also verifies .NET formatting plus lint and production builds for both React applications. CI deliberately uses fake AI providers and does not download multi-gigabyte model weights.
 
 ## Move to another computer
 

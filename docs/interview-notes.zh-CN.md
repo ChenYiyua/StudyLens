@@ -25,13 +25,21 @@ English:
 
 > I built a small end-to-end prototype around the same technical boundaries so that I could contribute faster and discuss concrete trade-offs rather than only expressing interest.
 
-## 为什么启动动画不是“只做特效”
+## 为什么动画不是“只做特效”
 
-启动页把产品的三个真实边界——course graph、evidence engine 和 AI orchestration——转成约三秒的系统初始化叙事，然后自动进入学习工作台。它不是用动画掩盖功能：用户可以立即跳过；动画期间底层界面是 inert 的，不会误触；系统设置为 reduced motion 时会直接进入工作台。主界面的 pointer-responsive depth、分阶段进入和 hover feedback 也只用于表达层级和可操作状态，不改变核心学习流程。
+启动页把产品的三个真实边界——course graph、evidence engine 和 AI orchestration——转成约三秒的系统初始化叙事，然后自动进入学习工作台。它不是用动画掩盖功能：用户可以立即跳过；动画期间底层界面是 inert 的，不会误触；系统设置为 reduced motion 时会直接进入工作台。长时间生成时，界面展示 application pipeline stage 和 elapsed time，返回后用可跳过的 typewriter effect 渲染答案。它明确不声称展示模型的 private chain-of-thought。
 
 面试里可以这样说：
 
-> I treated motion as product feedback rather than decoration. The intro is brief and skippable, respects reduced-motion preferences, and maps directly to the system's course, retrieval, and model layers. The workspace remains the primary product, so the animation never blocks a returning user who wants to continue immediately.
+> I treated motion as product feedback rather than decoration. The intro is brief and skippable, respects reduced-motion preferences, and maps directly to the system's course, retrieval, and model layers. During long model calls, the UI reports truthful application stages and elapsed time, then uses a skippable typewriter reveal without pretending to expose private chain-of-thought.
+
+## 怎么证明它不只适用于 EAM
+
+我用桌面上六门结构不同的课程做了真实兼容性测试：BPM、离散概率、嵌入式系统、线性代数、微观经济学和信号处理。第一轮暴露了三类真实问题：macOS `._` 伪 PDF 会让整个导入失败；德语/中文以及 `Exercise Sheets` 等实际命名被误分成 supplement；课件有 PPTX 但索引器不支持。
+
+修复后，六门课都能生成 lecture/exercise/solution learning path。BPM 还通过了完整的浏览器文件夹上传、API 注册、检索以及本地模型 lecture generation，而不是只直接运行 Python 脚本。现在单个损坏文件、Office 临时文件或 macOS metadata 会被隔离并报告，其他有效文件继续导入。
+
+面试时不能说“任何学校任何文件都百分之百支持”。准确边界是：目前支持 PDF、PPTX、Markdown、text；上限 100 个有效文件、单文件 50 MB、课程总计 250 MB；扫描型 PDF 还需要 OCR，DOCX 会跳过。
 
 ## 一次评分请求怎么走
 
@@ -94,9 +102,10 @@ English:
 
 ## 测试和评估怎么讲
 
-- 5 个 Python 测试验证 PDF/Markdown/text indexing、page preview 和 stable metadata；
-- 34 个 C# 测试覆盖 retrieval、完整 evidence detail、course isolation、API validation、Chrome extension CORS、Tutor structured output、repository 和安全文件路径；
-- 6 个 TypeScript 测试锁住 extension URL 编码、文本长度限制、右键暂存选区的 freshness、Dashboard handoff 解析和无效 course fallback；
+- 8 个 Python 测试验证 PDF/PPTX/Markdown/text indexing、page preview、multilingual classification、sidecar/corrupt-file isolation 和 stable metadata；
+- 35 个 C# 测试覆盖 retrieval、完整 evidence detail、course isolation、API validation、course import、Chrome extension CORS、Tutor structured output、repository 和安全文件路径；
+- 4 个 Dashboard TypeScript 测试锁住 handoff 解析、无效 course fallback、generation stage progression 和 long-wait 状态；
+- 4 个 extension TypeScript 测试锁住 URL 编码、文本长度限制和右键暂存选区的 freshness；
 - 4 个固定 retrieval cases 要求期望文档 rank first；
 - Dashboard 和 extension 都做 lint、test 和 production build；
 - 真实本机 smoke test 已验证 MongoDB health、AI grade write、history read、handoff fragment 消费和浏览器显示。

@@ -10,6 +10,7 @@ public sealed record CourseStatusResponse(
     int PageCount,
     int EmptyPageCount,
     int ChunkCount,
+    int SkippedDocumentCount,
     IReadOnlyDictionary<string, int> MaterialTypes,
     string? Message);
 
