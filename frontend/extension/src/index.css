@@ -1,11 +1,11 @@
 :root {
-  color: #17251f;
-  background: #f3f6f1;
+  color: #18325d;
+  background: #eef6ff;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
 
 * { box-sizing: border-box; }
-body { min-width: 380px; min-height: 520px; margin: 0; }
+body { min-width: 400px; min-height: 560px; margin: 0; }
 button, select, textarea { font: inherit; }

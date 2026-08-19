@@ -41,6 +41,21 @@ public sealed class CourseApiTests : IClassFixture<CourseApiTests.CourseApiFacto
     }
 
     [Fact]
+    public async Task GetCourses_FromChromeExtension_AllowsLocalExtensionOrigin()
+    {
+        const string extensionOrigin = "chrome-extension://studylens-test-extension";
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/courses");
+        request.Headers.TryAddWithoutValidation("Origin", extensionOrigin);
+
+        using var response = await client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains(
+            extensionOrigin,
+            response.Headers.GetValues("Access-Control-Allow-Origin"));
+    }
+
+    [Fact]
     public async Task GetLearningPath_ReturnsLectureMaterials()
     {
         var response = await client.GetFromJsonAsync<CourseLearningPathResponse>(

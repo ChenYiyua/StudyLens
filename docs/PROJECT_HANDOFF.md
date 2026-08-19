@@ -37,11 +37,12 @@ The public demo should run without private course files. Private PDFs must be co
 ## Verified local reference deployment
 
 - EAM: 52 PDFs, 926 pages, 967 chunks.
-- Qwen3.5 4B responds on the current 16 GB machine.
-- Qwen3.5 9B is downloaded but cannot load on the current machine; evaluate it on the RTX 3060 laptop.
+- Qwen3.5 9B completes lecture, practice, grading, and history reload on the 16 GB / RTX 3060 Laptop reference machine using a 4,096-token context.
+- Ollama reports an approximately 57% GPU / 43% CPU split for 9B; use Qwen3.5 4B as the fallback on weaker machines.
 - MongoDB Windows service is running and the application health endpoint reports connected.
 - A real EAM answer was graded, persisted, reloaded, and displayed with six source citations.
 - A 7,093-character EAM lecture lesson completed without a cut-off and displayed three 1200x900 cited-page previews without browser errors.
+- Microsoft Edge v0.3.1 completed selected text -> context menu -> review popup -> local dashboard handoff.
 
 ## Safe next backlog
 

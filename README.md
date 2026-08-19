@@ -4,7 +4,7 @@
 ![ASP.NET Core](https://img.shields.io/badge/ASP.NET_Core-C%23-5d65d8?logo=dotnet&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-NoSQL-19a974?logo=mongodb&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-Ingestion-2877c7?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-38_passing-16885f)
+![Tests](https://img.shields.io/badge/tests-45_passing-16885f)
 
 StudyLens is a multi-course, source-grounded AI learning companion for real study material. Its primary workflow teaches a selected lecture, explains the course's own exercise and solution, then generates a knowledge check and grades the student's answer against the same source.
 
@@ -28,7 +28,18 @@ A clean clone includes a small original demo course and retrieval benchmark. The
 </p>
 <p align="center"><strong>Persistent Past feedback</strong><br/>A fresh browser session reloaded the saved 10/10 attempt, full formative report, model provenance, and course-source links from MongoDB.</p>
 
-The screenshots are from a verified clean-clone run using the public demo course and local `qwen3.5:9b`. The Past feedback view was tested after opening a new browser session, confirming that the saved attempt survives beyond in-memory UI state. Private course files and extracted text are excluded from Git.
+<table>
+  <tr>
+    <td width="35%"><img src="docs/images/studylens-extension-popup.png" alt="StudyLens browser extension review popup" /></td>
+    <td width="65%"><img src="docs/images/studylens-extension-handoff.png" alt="Browser selection handed to the StudyLens dashboard" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Explicit-selection bridge</strong><br/>Review or edit the selected text and choose its course before anything leaves the page.</td>
+    <td align="center"><strong>Grounded dashboard handoff</strong><br/>The dashboard consumes the local fragment, removes it from the address bar, and offers a cited course explanation.</td>
+  </tr>
+</table>
+
+The AI tutor screenshots are from a verified clean-clone run using the public demo course and local `qwen3.5:9b`. The Past feedback view was tested after opening a new browser session, confirming that the saved attempt survives beyond in-memory UI state. The extension handoff screenshots use the local EAM reference deployment. Private course files and extracted text are excluded from Git.
 
 ### Validated local runtime
 
@@ -45,6 +56,8 @@ flowchart LR
     E --> Q[3. Generated knowledge check]
     Q --> F[Evidence-based feedback]
     F --> M[(MongoDB attempt history)]
+    W[Explicitly selected web text] --> B[Extension review and course choice]
+    B --> L
 ```
 
 This is more than a PDF chatbot:
@@ -68,7 +81,7 @@ This is more than a PDF chatbot:
 - automatic pairing and walkthrough of course-provided exercises and solutions;
 - course-grounded knowledge-check generation and formative grading;
 - MongoDB-backed attempt history, aggregate score, reload, and user-controlled deletion;
-- privacy-controlled Chrome/Edge extension handoff;
+- privacy-controlled Manifest V3 Chrome/Edge extension handoff with editable selection, course choice, and no cookie or history permission;
 - selectable local Qwen3.5, OpenAI GPT, and Google Gemini providers;
 - public demo corpus plus fixed retrieval evaluation cases;
 - Python, C#, API, formatting, dashboard, and extension checks in CI.
@@ -145,7 +158,19 @@ npm run build
 
 Then open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `frontend\extension\dist`.
 
-On any ordinary page, select a concept, open StudyLens, review the selected text, choose a course, and click **Open in StudyLens**. The extension does not request cookies or browsing-history access. The selection is placed in a local URL fragment, consumed by the dashboard, and immediately removed from the address bar.
+On any ordinary page, select a concept, right-click it, and choose **Explain “…” with StudyLens**. The context-menu click captures the explicit selection before the page loses focus, then opens the review popup. Choose a course and click **Explain with course evidence**. The toolbar button remains available as a fallback on pages that preserve their selection. Keep the local StudyLens server running at `http://127.0.0.1:5080`.
+
+The Manifest V3 extension requests `activeTab`, `scripting`, `contextMenus`, and `storage`. The context menu appears only for a user selection, while `storage.session` temporarily holds that selection until the popup consumes and deletes it. It does not request cookies or browsing-history access and does not run a passive page content script. The reviewed text is placed in a local URL fragment, consumed by the dashboard, and immediately removed from the address bar.
+
+Manual smoke-test checklist:
+
+1. Open an ordinary webpage and select a short paragraph.
+2. Right-click the selection, choose **Explain “…” with StudyLens**, and confirm that only that paragraph appears.
+3. Edit the text if needed, choose a course, and click **Explain with course evidence**.
+4. Confirm that the dashboard shows the Browser Extension Handoff card and the address bar no longer contains a `#from=extension` fragment.
+5. Dismiss the card or request a course-grounded explanation and inspect its file/page citations.
+
+The unpacked v0.3.1 build has been manually smoke-tested in Microsoft Edge across the selection context menu, review popup, and local dashboard handoff.
 
 ## MongoDB data model
 
@@ -167,7 +192,7 @@ A compound index on `(courseId, createdAtUtc descending)` supports course histor
 powershell -ExecutionPolicy Bypass -File scripts\verify.ps1
 ```
 
-The current suite runs 5 Python indexing/rendering tests, 33 C# tests, .NET formatting verification, and lint/production builds for both React applications. CI deliberately uses fake AI providers and does not download multi-gigabyte model weights.
+The current suite runs 5 Python indexing/rendering tests, 34 C# tests, and 6 TypeScript selection/handoff-contract tests, plus .NET formatting verification and lint/production builds for both React applications. CI deliberately uses fake AI providers and does not download multi-gigabyte model weights.
 
 ## Move to another computer
 

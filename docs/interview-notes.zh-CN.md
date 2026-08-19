@@ -60,8 +60,8 @@ English:
 ## 为什么选 Qwen3.5
 
 - 权重采用开放许可证，可在本机运行，不需要 API key 或 token 费用；
-- 4B 是当前 16 GB 电脑上可靠的默认档；
-- 9B 已保留给 RTX 3060 电脑做质量/延迟比较；
+- 9B 已在 16 GB RAM、RTX 3060 Laptop 6 GB VRAM 的电脑上完成 lecture、practice、grading 和 MongoDB reload 端到端验证；
+- Ollama 以约 57% GPU / 43% CPU 混合加载 9B；4B 仍是显存或内存较弱电脑的兼容 fallback；
 - `ITutorAiProvider` 隔离模型调用，以后接云模型不用改 retrieval、MongoDB 或 React。
 
 不要说“Qwen 是世界上最好的模型”。应该说：
@@ -72,29 +72,35 @@ English:
 
 第一版就限制为 user-initiated explicit selection：
 
-- 只有用户点击扩展时才执行读取；
-- 只调用 `window.getSelection()`；
+- 推荐入口是选中文字后的右键菜单；浏览器把明确选择的 `selectionText` 交给扩展，因此不会因为点击工具栏导致页面失焦而丢失选区；
+- 工具栏入口仍只在用户点击后调用 `window.getSelection()`，作为兼容性 fallback；
+- 右键入口只用 `storage.session` 暂存选区，弹窗读取后立即删除；
 - 不申请 cookies 或 history 权限；
 - 用户能在发送前编辑或取消；
 - 数据进入本机 URL fragment，不成为 HTTP request path；
 - Dashboard 消费后立刻清除 fragment。
 
+端到端交接不是“扩展只生成一个链接”就结束。Dashboard 现在会解析并校验 handoff，按可用课程切换上下文，把选中文字显示在独立卡片中，然后复用同一个 course-grounded explain API。无法识别的 course ID 会被丢弃，问题长度也在扩展和 Dashboard 两端限制为 300 个字符。
+
 如果以后做真实用户研究，还需要 consent notice、retention policy、pseudonymous participant ID 和可撤回机制；当前原型不假装已经满足完整研究治理。
 
 ## 测试和评估怎么讲
 
-- 4 个 Python 测试验证 PDF/Markdown/text indexing 和 stable metadata；
-- 20 个 C# 测试覆盖 retrieval、完整 evidence detail、course isolation、API validation、Tutor structured output、repository 和安全文件路径；
+- 5 个 Python 测试验证 PDF/Markdown/text indexing、page preview 和 stable metadata；
+- 34 个 C# 测试覆盖 retrieval、完整 evidence detail、course isolation、API validation、Chrome extension CORS、Tutor structured output、repository 和安全文件路径；
+- 6 个 TypeScript 测试锁住 extension URL 编码、文本长度限制、右键暂存选区的 freshness、Dashboard handoff 解析和无效 course fallback；
 - 4 个固定 retrieval cases 要求期望文档 rank first；
-- Dashboard 和 extension 都做 lint + production build；
-- 真实本机 smoke test 已验证 MongoDB health、AI grade write、history read 和浏览器显示。
+- Dashboard 和 extension 都做 lint、test 和 production build；
+- 真实本机 smoke test 已验证 MongoDB health、AI grade write、history read、handoff fragment 消费和浏览器显示。
+
+已在 Microsoft Edge 中手动加载 v0.3.1，并真实验证“网页选中文字 → 右键 Explain with StudyLens → review popup 保留选区 → local Dashboard handoff”。这条运行证据可以和 selection/handoff contract 自动化测试一起讲；仍然不要把 unpacked prototype 说成已经发布到扩展商店的产品。
 
 固定 benchmark 的价值是：以后换 embedding、hybrid retrieval 或模型时，能够比较结果，而不是凭感觉说“好像更聪明”。
 
 ## 真实调试故事
 
 1. Python dataclass 最初输出 `relative_path`，C# 期待 `relativePath`。文本仍能显示，但来源路径为空。修复为显式 JSON mapping，并加测试锁住 filename/page contract。
-2. 9B 模型下载成功，但在当前 16 GB 集显电脑 inference startup OOM。于是 4B 成为 portable default，9B 保留给 RTX 3060；这证明 provider/model configuration 不是过度设计。
+2. 9B 在 16 GB 集显电脑上 inference startup OOM，但在 RTX 3060 Laptop 上能以 GPU/CPU 混合方式完成整条学习流程。因此 9B 成为经过运行验证的 reference default，4B 保留为弱机器 fallback；这证明模型选择必须基于实际硬件测试，而不是只看参数规模。
 3. MongoDB Driver 代码编译通过并不等于数据库真的可用，所以给 `/health` 增加 live ping，并用真实 AI 评分完成 write → reload → UI display。面试时强调 **runtime evidence, not README claims**。
 4. 浏览器实测发现历史条目触发横向滚动，原因是 CSS Grid 子项默认 `min-width:auto`。给文本容器加 `min-width:0` 后重新 build 和视觉验证。
 
@@ -102,7 +108,7 @@ English:
 
 - 当前是 lexical retrieval，同义词覆盖有限；
 - 扫描图片型 PDF 仍需要 OCR；
-- 4B 本地模型质量不等于云端旗舰模型；
+- 9B 本地模型质量仍不等于云端旗舰模型；
 - 引用证明来源，但生成解释仍需要学生核对；
 - 尚未完成真实用户学习效果研究；
 - 浏览器扩展是可加载 prototype，不是商店发布产品。
