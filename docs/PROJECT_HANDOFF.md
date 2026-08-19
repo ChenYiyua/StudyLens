@@ -8,7 +8,7 @@ Use this file when opening the repository on another computer or in a new Codex 
 - Backend: ASP.NET Core 10 with strict JSON input, course isolation, safe source access, retrieval, and replaceable AI/persistence interfaces.
 - Frontends: React/TypeScript dashboard and Manifest V3 Chrome/Edge extension.
 - Dashboard UI: responsive dark enterprise theme with glass panels, blue-violet lighting, CSS particle motion, staged entrance/hover animations, and reduced-motion accessibility.
-- AI: Ollama at `http://127.0.0.1:11434`; portable default `qwen3.5:4b`.
+- AI: Ollama at `http://127.0.0.1:11434`; validated local default `qwen3.5:9b`.
 - Persistence: MongoDB default at `mongodb://127.0.0.1:27017`, database `studylens`, collection `study_attempts`.
 - Reproducibility: committed original demo materials, generated demo index, and four fixed retrieval cases.
 - Visual grounding: cited PDF pages are rendered and cached locally as inline 1200-pixel PNG previews, with links to the original source page.

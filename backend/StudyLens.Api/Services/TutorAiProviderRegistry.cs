@@ -29,7 +29,7 @@ public sealed class TutorAiProviderRegistry : ITutorAiProviderRegistry
             var fallback = new TutorAiProfileOptions
             {
                 Id = "ollama-local",
-                DisplayName = "Qwen local",
+                DisplayName = "Qwen 3.5 9B local",
                 Provider = "Ollama",
                 Endpoint = settings.Endpoint,
                 Model = settings.Model,

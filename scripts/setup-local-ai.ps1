@@ -1,5 +1,5 @@
 param(
-    [string]$Model = 'qwen3.5:4b',
+    [string]$Model = 'qwen3.5:9b',
     [string]$ModelRoot
 )
 

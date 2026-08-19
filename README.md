@@ -14,16 +14,25 @@ A clean clone includes a small original demo course and retrieval benchmark. The
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/studylens-course-import.png" alt="Import course files or an entire structured folder" /></td>
-    <td width="50%"><img src="docs/images/studylens-learning-workflow.png" alt="Exercise walkthrough and generated knowledge-check workflow" /></td>
+    <td width="50%"><img src="docs/images/studylens-learning-workflow.png" alt="Qwen 3.5 9B lecture generated from the public demo course" /></td>
+    <td width="50%"><img src="docs/images/studylens-knowledge-check.png" alt="Completed Qwen 3.5 9B knowledge check with grounded feedback" /></td>
   </tr>
   <tr>
-    <td align="center"><strong>Flexible course import</strong><br/>Preserves Lecture / Exercise / Solution folders and skips unsupported formats.</td>
-    <td align="center"><strong>Guided learning loop</strong><br/>Teach the lecture, explain the provided solution, then test understanding.</td>
+    <td align="center"><strong>Complete local lesson</strong><br/>A 3,828-character bilingual lecture generated from cited demo-course evidence.</td>
+    <td align="center"><strong>Grounded formative feedback</strong><br/>A completed 10/10 knowledge check with strengths, an improved answer, and source links.</td>
   </tr>
 </table>
 
-The screenshots are from the running local EAM reference deployment. Private course files and extracted text are excluded from Git.
+<p align="center">
+  <img src="docs/images/studylens-past-feedback.png" alt="MongoDB-backed Past feedback history reopened in a fresh browser session" width="100%" />
+</p>
+<p align="center"><strong>Persistent Past feedback</strong><br/>A fresh browser session reloaded the saved 10/10 attempt, full formative report, model provenance, and course-source links from MongoDB.</p>
+
+The screenshots are from a verified clean-clone run using the public demo course and local `qwen3.5:9b`. The Past feedback view was tested after opening a new browser session, confirming that the saved attempt survives beyond in-memory UI state. Private course files and extracted text are excluded from Git.
+
+### Validated local runtime
+
+The current reference machine has 16 GB RAM and an RTX 3060 Laptop GPU with 6 GB VRAM. Ollama loads `qwen3.5:9b` across 57% GPU / 43% CPU with a 4,096-token context. In the captured end-to-end run, the model produced the 3,828-character lecture in about 232 seconds, three structured questions in about 40 seconds, and grounded grading in about 47 seconds. The resulting attempt was then reloaded from MongoDB in a fresh browser session through Past feedback. Timings vary with thermals and other system load.
 
 ## Product workflow
 
@@ -170,10 +179,10 @@ The current suite runs 5 Python indexing/rendering tests, 33 C# tests, .NET form
 
 GitHub synchronizes source code, the public demo, tests, and documentation. It intentionally does not synchronize private PDFs, model weights, local configuration, MongoDB student data, or this Codex conversation.
 
-The portable default is `qwen3.5:4b` for the current 16 GB laptop. On the Ryzen/RTX 3060 laptop, evaluate the retained 9B profile:
+The validated default is `qwen3.5:9b` for a 16 GB Windows laptop with an RTX 3060 Laptop GPU (6 GB VRAM). It is the largest official Qwen3.5 Ollama profile that fits this machine without relying on a 17 GB-or-larger model image:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\setup-local-ai.ps1 -Model "qwen3.5:9b"
+powershell -ExecutionPolicy Bypass -File scripts\setup-local-ai.ps1
 ```
 
 ## API
