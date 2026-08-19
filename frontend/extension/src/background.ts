@@ -2,15 +2,19 @@ import { normaliseSelection, pendingSelectionKey } from './handoff'
 
 const contextMenuId = 'explain-selection-with-studylens'
 
-chrome.runtime.onInstalled.addListener(() => {
+registerContextMenu()
+
+function registerContextMenu() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: contextMenuId,
       title: 'Explain “%s” with StudyLens',
       contexts: ['selection'],
+    }, () => {
+      void chrome.runtime.lastError
     })
   })
-})
+}
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== contextMenuId || !info.selectionText) return
