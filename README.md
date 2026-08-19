@@ -6,7 +6,9 @@
 ![Python](https://img.shields.io/badge/Python-Ingestion-2877c7?logo=python&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-51_passing-16885f)
 
-StudyLens is a multi-course, source-grounded AI learning companion for real study material. Its primary workflow teaches a selected lecture, explains the course's own exercise and solution, then generates a knowledge check and grades the student's answer against the same source.
+StudyLens turns heterogeneous university course folders into a traceable, multi-course AI teaching workflow. Instead of behaving like a generic PDF chat box, it organizes lectures and exercise/solution pairs, teaches with page-level evidence, generates knowledge checks, grades answers against the same sources, and preserves attempt history.
+
+Students can work in the full learning dashboard or explicitly hand selected web text to StudyLens through its Chrome/Edge extension. The system keeps ingestion, retrieval, model providers, teaching workflows, and MongoDB persistence behind separate boundaries so each part can be tested and replaced independently.
 
 A clean clone includes a small original demo course and retrieval benchmark. The private reference deployment uses TUM's **Enterprise Architecture Management and Reference Models (INHN0017)** corpus: 52 PDFs, 926 pages, and 967 searchable chunks. Those copyrighted files and their extracted index remain local and are not committed.
 
